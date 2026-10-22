@@ -1,0 +1,181 @@
+@import "tailwindcss";
+
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0a0a0a;
+    --foreground: #ededed;
+  }
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+.repo-world {
+  background:
+    radial-gradient(circle at 50% -20%, rgb(16 185 129 / 0.16), transparent 35%),
+    radial-gradient(circle at 5% 45%, rgb(34 211 238 / 0.08), transparent 28%),
+    #020617;
+}
+
+.repo-panel {
+  border: 1px solid rgb(148 163 184 / 0.12);
+  border-radius: 1.5rem;
+  background:
+    linear-gradient(145deg, rgb(15 23 42 / 0.94), rgb(2 6 23 / 0.9));
+  box-shadow: 0 24px 80px rgb(0 0 0 / 0.22);
+}
+
+.repo-kicker {
+  color: #6ee7b7;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+}
+
+.repo-stage {
+  background:
+    linear-gradient(to bottom, rgb(6 78 59 / 0.5), rgb(2 6 23 / 0.92) 62%),
+    #020617;
+  box-shadow:
+    inset 0 0 90px rgb(16 185 129 / 0.08),
+    0 25px 90px rgb(0 0 0 / 0.35);
+}
+
+.repo-stars {
+  position: absolute;
+  inset: 0;
+  opacity: 0.5;
+  background-image:
+    radial-gradient(circle, #d1fae5 1px, transparent 1px),
+    radial-gradient(circle, #67e8f9 1px, transparent 1px);
+  background-position: 0 0, 32px 34px;
+  background-size: 72px 72px, 96px 96px;
+  mask-image: linear-gradient(to bottom, black, transparent 78%);
+}
+
+.repo-moon {
+  position: absolute;
+  right: 11%;
+  top: 4%;
+  width: 110px;
+  height: 110px;
+  border-radius: 999px;
+  background: rgb(167 243 208 / 0.1);
+  box-shadow:
+    0 0 50px rgb(110 231 183 / 0.2),
+    inset -18px -12px 0 rgb(2 6 23 / 0.13);
+}
+
+.repo-ground {
+  position: absolute;
+  bottom: 0;
+  left: -10%;
+  width: 120%;
+  height: 22%;
+  border-radius: 50% 50% 0 0;
+  background:
+    radial-gradient(ellipse at top, rgb(52 211 153 / 0.16), transparent 65%),
+    linear-gradient(to bottom, #0f2a28, #07111c);
+  border-top: 1px solid rgb(110 231 183 / 0.16);
+}
+
+.repo-pixel-image {
+  image-rendering: pixelated;
+}
+
+.repo-character-walk {
+  animation: repo-walk 7s ease-in-out infinite;
+  transform-origin: center bottom;
+}
+
+.repo-character-float {
+  animation: repo-float 1.8s ease-in-out infinite;
+}
+
+.repo-character-shadow {
+  width: 58%;
+  height: 22px;
+  margin: -5px auto 0;
+  border-radius: 50%;
+  background: rgb(0 0 0 / 0.45);
+  filter: blur(6px);
+  animation: repo-shadow 1.8s ease-in-out infinite;
+}
+
+.scrollbar-subtle {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(148, 163, 184, 0.25) transparent;
+}
+
+.scrollbar-subtle::-webkit-scrollbar {
+  width: 5px;
+}
+
+.scrollbar-subtle::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.scrollbar-subtle::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.25);
+  border-radius: 999px;
+}
+
+.scrollbar-subtle::-webkit-scrollbar-thumb:hover {
+  background: rgba(148, 163, 184, 0.5);
+}
+
+@keyframes repo-walk {
+  0%,
+  100% {
+    transform: translateX(-9%);
+  }
+  50% {
+    transform: translateX(9%);
+  }
+}
+
+@keyframes repo-float {
+  0%,
+  100% {
+    transform: translateY(0) rotate(-0.5deg);
+  }
+  50% {
+    transform: translateY(-10px) rotate(0.5deg);
+  }
+}
+
+@keyframes repo-shadow {
+  0%,
+  100% {
+    opacity: 0.62;
+    transform: scaleX(1);
+  }
+  50% {
+    opacity: 0.4;
+    transform: scaleX(0.86);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .repo-character-walk,
+  .repo-character-float,
+  .repo-character-shadow {
+    animation: none;
+  }
+}
