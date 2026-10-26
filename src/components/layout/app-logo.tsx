@@ -6,14 +6,14 @@ export function AppLogo() {
     <Link
       href="/"
       aria-label="Coding RPG（ホームへ戻る）"
-      className="flex h- shrink-0 items-center sm:h-20"
+      className="flex shrink-0 items-center"
     >
       <Image
         src="/images/logo.png"
         alt="Coding RPG"
-        width={1774}
-        height={887}
-        className="h-20 w-auto object-contain sm:h-28"
+        width={1518}
+        height={347}
+        className="h-9 w-auto sm:h-11"
         priority
       />
     </Link>
