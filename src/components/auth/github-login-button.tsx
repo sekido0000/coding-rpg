@@ -52,7 +52,7 @@ export function GitHubLoginButton({
         // ログイン後の「リポジトリの追加・連携解除」と同じ緑にそろえる
         className={
           compact
-            ? "inline-flex shrink-0 items-center gap-2 rounded-xl bg-emerald-400 px-4 py-2 text-sm font-bold text-slate-950 shadow-lg shadow-emerald-400/20 transition hover:bg-emerald-300 disabled:cursor-wait disabled:bg-slate-600"
+            ? "inline-flex shrink-0 items-center gap-2 rounded-xl bg-emerald-400 px-5 py-2.5 text-base font-bold text-slate-950 shadow-lg shadow-emerald-400/20 transition hover:bg-emerald-300 disabled:cursor-wait disabled:bg-slate-600"
             : "inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-emerald-400 px-5 py-3 font-bold text-slate-950 shadow-lg shadow-emerald-400/20 transition hover:bg-emerald-300 disabled:cursor-wait disabled:bg-slate-600"
         }
       >
