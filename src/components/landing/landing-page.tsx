@@ -31,7 +31,7 @@ export function LandingPage() {
   return (
     <main className="flex min-h-screen flex-col bg-slate-950">
       <header className="sticky top-0 z-20 border-b border-slate-800 bg-slate-950/90 backdrop-blur">
-        <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-4 px-6 py-2">
+        <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-4 px-6 py-3">
           <AppLogo />
 
           <GitHubLoginButton compact />
