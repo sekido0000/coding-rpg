@@ -33,8 +33,8 @@ const steps: UsageStep[] = [
     imageHeight: 408,
     highlights: [
       {
-        left: 62.3,
-        top: 11.5,
+        left: 61.5,
+        top: 8.2,
         width: 19,
         height: 17.2,
         caption: "「リポジトリの追加・連携解除」を押す",
