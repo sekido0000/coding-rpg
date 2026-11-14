@@ -463,3 +463,33 @@ describe("GitHubの設定画面でのリポジトリの追加・削除", () => {
     expect(repository(300)).toBeUndefined();
   });
 });
+
+describe("古い受信記録の削除", () => {
+  it("通知を記録する時に，7日より古い受信記録を消す", async () => {
+    const daysAgo = (days: number) =>
+      new Date(
+        Date.now() - days * 24 * 60 * 60 * 1000,
+      ).toISOString();
+
+    db.rows("webhook_deliveries").push(
+      {
+        delivery_id: "old",
+        event: "push",
+        received_at: daysAgo(8),
+      },
+      {
+        delivery_id: "recent",
+        event: "push",
+        received_at: daysAgo(6),
+      },
+    );
+
+    await POST(webhookRequest(pushPayload()));
+
+    expect(
+      db
+        .rows("webhook_deliveries")
+        .map((row) => row.delivery_id),
+    ).toEqual(["recent", "delivery-1"]);
+  });
+});
