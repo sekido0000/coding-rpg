@@ -8,6 +8,7 @@ import {
   type CSSProperties,
 } from "react";
 
+import { VillageScenery } from "@/components/world/village-scenery";
 import { getCharacterEvolution } from "@/lib/characters/catalog";
 import {
   getDepth,
@@ -146,23 +147,34 @@ export function RepositoryWorld({
       <div className="repo-moon" />
       <div className="repo-stars" />
 
-      <div className="absolute left-5 top-4 z-[110] sm:left-7 sm:top-6">
-        <h2
-          id="repository-world-title"
-          className="repo-kicker"
-        >
-          リポジトリワールド
-        </h2>
-        <p className="mt-1 text-xs text-slate-400">
+      {/* 村の入り口の看板 */}
+      <div className="absolute left-4 top-4 z-[110] sm:left-6 sm:top-5">
+        <div className="rounded-lg border-2 border-[#4a2a14] bg-[#7a4a26] px-4 py-2 shadow-[0_4px_0_#3a200f,0_10px_18px_rgba(0,0,0,0.45)] sm:px-5 sm:py-2.5">
+          <h2
+            id="repository-world-title"
+            className="text-lg font-black tracking-wide text-amber-50 [text-shadow:0_2px_0_#3a200f] sm:text-2xl"
+          >
+            リポジトリワールド
+          </h2>
+        </div>
+        <p className="mt-2 text-xs text-slate-300 [text-shadow:0_1px_2px_rgba(0,0,0,0.8)]">
           キャラクターを押すと，詳細が見られます
         </p>
       </div>
 
-      {/* 歩ける範囲に合わせて，地面を高くする */}
+      {/*
+       * 歩ける範囲に合わせて地面を高くし，
+       * 家を置けるよう上の端のカーブをゆるやかにする．
+       */}
       <div
         className="repo-ground"
-        style={{ height: "40%" }}
+        style={{
+          height: "40%",
+          borderRadius: "50% 50% 0 0 / 12% 12% 0 0",
+        }}
       />
+
+      <VillageScenery />
 
       {characters.map((character, index) => {
         const walker =

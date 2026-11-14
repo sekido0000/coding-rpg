@@ -57,7 +57,7 @@ export default async function Home() {
   return (
     <main className="flex min-h-screen flex-col bg-slate-950 px-6">
       <div className="mx-auto flex w-full max-w-6xl flex-1 flex-col py-8">
-        <div className="mb-12 flex flex-col gap-5 border-b border-slate-800 pb-6 sm:flex-row sm:items-center sm:justify-between">
+        <div className="mb-8 flex flex-col gap-5 border-b border-slate-800 pb-6 sm:flex-row sm:items-center sm:justify-between">
           <AppLogo />
 
           <div className="flex flex-wrap items-center gap-3 sm:justify-end">
@@ -92,13 +92,13 @@ export default async function Home() {
             </div>
           </div>
         </div>
-        <header className="mb-10">
-          <h1 className="max-w-3xl text-4xl font-bold tracking-tight text-white md:text-5xl">
-            コードを書くほど，
-            <br />
-            リポジトリのキャラが成長する．
-          </h1>
-        </header>
+        {/*
+         * キャッチコピーはトップページ（ログイン前）だけに出す．
+         * 見出しの構造のため，画面には出さずに h1 だけ置く．
+         */}
+        <h1 className="sr-only">
+          Coding RPG ホーム
+        </h1>
 
         <CharacterDashboard
           key={dashboardKey}
