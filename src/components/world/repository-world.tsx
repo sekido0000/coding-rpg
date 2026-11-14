@@ -228,7 +228,7 @@ export function RepositoryWorld({
                 alt=""
                 width={96}
                 height={96}
-                className={`repo-pixel-image h-auto drop-shadow-[0_10px_8px_rgba(0,0,0,0.45)] ${
+                className={`repo-pixel-image block h-auto drop-shadow-[0_10px_8px_rgba(0,0,0,0.45)] ${
                   isCrowded
                     ? "w-14 sm:w-16"
                     : "w-20 sm:w-24"
