@@ -115,7 +115,14 @@ const TREE_PIXELS: Pixel[] = [
   [3, 2, 3, 2, "#4caf6a"],
   [2, 4, 3, 2, "#4caf6a"],
   // 幹
-  [5, 11, 2, 5, "#6b4226"],
+  // 幹と，地面に広がる根元
+  [5, 11, 2, 4, "#6b4226"],
+  [4, 15, 4, 1, "#5a3720"],
+  // 根元の草
+  [1, 15, 2, 1, "#3d8f4f"],
+  [2, 14, 1, 1, "#3d8f4f"],
+  [9, 15, 2, 1, "#3d8f4f"],
+  [9, 14, 1, 1, "#3d8f4f"],
 ];
 
 // 5×16マスの街灯
@@ -168,11 +175,15 @@ const HOUSES: (Placement & { colors: HouseColors })[] = [
   },
 ];
 
+/*
+ * 木は，地面の上の端に乗せると貼り付けたように見えるので，
+ * 少し地面の中（手前）に置く．
+ */
 const TREES: Placement[] = [
-  { left: 5, bottom: 36, className: "w-12 sm:w-16" },
-  { left: 35, bottom: 38, className: "w-9 sm:w-12" },
-  { left: 65, bottom: 38, className: "w-9 sm:w-12" },
-  { left: 95, bottom: 36, className: "w-12 sm:w-16" },
+  { left: 5, bottom: 31, className: "w-12 sm:w-16" },
+  { left: 35, bottom: 35, className: "w-9 sm:w-12" },
+  { left: 65, bottom: 35, className: "w-9 sm:w-12" },
+  { left: 95, bottom: 31, className: "w-12 sm:w-16" },
 ];
 
 const LAMPS: Placement[] = [
@@ -184,6 +195,16 @@ const FENCES: Placement[] = [
   { left: 28, bottom: 37, className: "w-10 sm:w-14" },
   { left: 72, bottom: 37, className: "w-10 sm:w-14" },
 ];
+
+// 足元の影．地面に立っているように見せる
+function GroundShadow() {
+  return (
+    <span
+      aria-hidden="true"
+      className="absolute bottom-0 left-1/2 h-[12%] w-[120%] -translate-x-1/2 translate-y-1/2 rounded-[50%] bg-black/45 blur-[3px]"
+    />
+  );
+}
 
 function placementStyle({ left, bottom }: Placement) {
   return {
@@ -215,7 +236,7 @@ export function VillageScenery() {
             width={16}
             height={6}
             pixels={FENCE_PIXELS}
-            className="h-auto w-full"
+            className="relative block h-auto w-full"
           />
         </div>
       ))}
@@ -226,11 +247,12 @@ export function VillageScenery() {
           className={`absolute z-[3] -translate-x-1/2 drop-shadow-[0_6px_6px_rgba(0,0,0,0.4)] ${house.className}`}
           style={placementStyle(house)}
         >
+          <GroundShadow />
           <PixelArt
             width={16}
             height={16}
             pixels={getHousePixels(house.colors)}
-            className="h-auto w-full"
+            className="relative block h-auto w-full"
           />
         </div>
       ))}
@@ -241,11 +263,12 @@ export function VillageScenery() {
           className={`absolute z-[4] -translate-x-1/2 ${tree.className}`}
           style={placementStyle(tree)}
         >
+          <GroundShadow />
           <PixelArt
             width={12}
             height={16}
             pixels={TREE_PIXELS}
-            className="h-auto w-full"
+            className="relative block h-auto w-full"
           />
         </div>
       ))}
@@ -256,13 +279,14 @@ export function VillageScenery() {
           className={`absolute z-[4] -translate-x-1/2 ${lamp.className}`}
           style={placementStyle(lamp)}
         >
+          <GroundShadow />
           {/* 街灯のまわりの光 */}
           <div className="absolute -left-4 -right-4 -top-4 aspect-square rounded-full bg-amber-200/25 blur-md" />
           <PixelArt
             width={5}
             height={16}
             pixels={LAMP_PIXELS}
-            className="relative h-auto w-full"
+            className="relative block h-auto w-full"
           />
         </div>
       ))}
