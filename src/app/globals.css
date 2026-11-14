@@ -185,7 +185,17 @@ body {
 
 /* リポジトリワールドで経験値が入った時に，数字が浮かんで消える */
 .world-xp-pop {
-  animation: world-xp-pop 2.4s ease-out forwards;
+  animation: world-xp-pop 3.2s ease-out forwards;
+}
+
+/* 経験値が入った時に，キャラクターがぴょんと2回跳ねる */
+.world-hop {
+  animation: world-hop 0.5s ease-out 2;
+}
+
+/* 経験値が入ったことを知らせる帯が，現れてから消える */
+.world-announce {
+  animation: world-announce 4s ease-in-out forwards;
 }
 
 /* レベルが上がった時に，キャラクターのまわりが光る */
@@ -211,6 +221,32 @@ body {
   }
 }
 
+@keyframes world-hop {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  40% {
+    transform: translateY(-16px);
+  }
+}
+
+@keyframes world-announce {
+  0% {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  10%,
+  85% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+}
+
 @keyframes world-level-up {
   0%,
   100% {
@@ -232,6 +268,8 @@ body {
 
   /* 動かさずに表示だけする */
   .world-xp-pop,
+  .world-hop,
+  .world-announce,
   .world-level-up {
     animation: none;
   }

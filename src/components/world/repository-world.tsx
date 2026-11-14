@@ -79,6 +79,26 @@ function getInitialWalker(
   };
 }
 
+const SPEECH_STYLES: Record<
+  Speech["kind"],
+  { bubble: string; tail: string }
+> = {
+  solo: {
+    bubble: "bg-white text-slate-900",
+    tail: "border-t-white",
+  },
+  talk: {
+    bubble:
+      "bg-emerald-50 text-emerald-950 ring-2 ring-emerald-400",
+    tail: "border-t-emerald-400",
+  },
+  reaction: {
+    bubble:
+      "bg-amber-50 font-bold text-amber-950 ring-2 ring-amber-400",
+    tail: "border-t-amber-400",
+  },
+};
+
 type SpeechBubbleProps = {
   speech: Speech;
   // キャラクターの横の位置（%）．世界の端ではみ出さないよう，吹き出しの向きを変える
@@ -105,18 +125,8 @@ function SpeechBubble({
             tail: "left-1/2 -translate-x-1/2",
           };
 
-  // 会話の吹き出しは，独り言（白）と見分けられるよう緑にする
-  const style =
-    speech.kind === "talk"
-      ? {
-          bubble:
-            "bg-emerald-50 text-emerald-950 ring-2 ring-emerald-400",
-          tail: "border-t-emerald-400",
-        }
-      : {
-          bubble: "bg-white text-slate-900",
-          tail: "border-t-white",
-        };
+  // 独り言は白，会話は緑，経験値が入った時の反応は「+XP」と同じ金色にする
+  const style = SPEECH_STYLES[speech.kind];
 
   return (
     <span
@@ -156,7 +166,7 @@ export function RepositoryWorld({
     activity,
   );
 
-  const reactions = useGrowthReactions(
+  const { reactions, announcement } = useGrowthReactions(
     characters,
     activity,
     say,
@@ -282,6 +292,26 @@ export function RepositoryWorld({
 
       <VillageScenery />
 
+      {/* 経験値が入ったことのお知らせ（スマホでは見出しの下に出す） */}
+      {announcement && (
+        <div
+          key={announcement.key}
+          role="status"
+          className="world-announce pointer-events-none absolute inset-x-0 top-20 z-[120] flex justify-center px-4 sm:top-6"
+        >
+          <p
+            className={`${pixelFont.className} rounded-lg border-2 px-4 py-1.5 text-center text-base shadow-lg sm:text-xl ${
+              announcement.isLevelUp
+                ? "border-amber-300 bg-amber-500/90 text-white [text-shadow:2px_2px_0_#78350f]"
+                : "border-amber-300/80 bg-slate-950/85 text-amber-200 [text-shadow:2px_2px_0_#000]"
+            }`}
+          >
+            {announcement.isLevelUp ? "★ " : ""}
+            {announcement.text}
+          </p>
+        </div>
+      )}
+
       {characters.map((character, index) => {
         const walker =
           walkers[character.id] ??
@@ -359,13 +389,15 @@ export function RepositoryWorld({
               {reaction && (
                 <span
                   key={`xp-${reaction.key}`}
-                  className={`${pixelFont.className} world-xp-pop pointer-events-none absolute -top-1 right-0 z-10 translate-x-1/2 whitespace-nowrap text-sm text-amber-200 [text-shadow:1px_1px_0_#78350f,2px_2px_0_rgba(0,0,0,0.5)] sm:text-base`}
+                  className={`${pixelFont.className} world-xp-pop pointer-events-none absolute -top-4 right-0 z-10 translate-x-2/3 whitespace-nowrap text-xl text-amber-200 [text-shadow:2px_2px_0_#78350f,3px_3px_0_rgba(0,0,0,0.5)] sm:text-2xl`}
                 >
                   +{reaction.xp} XP
                 </span>
               )}
 
               <Image
+                // 経験値が入るたびに跳ねる動きをやり直すため，キーを変える
+                key={reaction ? `hop-${reaction.key}` : "idle"}
                 src={evolution.imagePath}
                 alt=""
                 width={96}
@@ -374,7 +406,9 @@ export function RepositoryWorld({
                   isCrowded
                     ? "w-14 sm:w-16"
                     : "w-20 sm:w-24"
-                } ${walker.isFacingLeft ? "-scale-x-100" : ""}`}
+                } ${walker.isFacingLeft ? "-scale-x-100" : ""} ${
+                  reaction ? "world-hop" : ""
+                }`}
               />
             </span>
 
