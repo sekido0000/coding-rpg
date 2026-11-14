@@ -343,23 +343,26 @@ describe("同時に届いた通知との競合", () => {
 });
 
 describe("処理の途中での失敗", () => {
-  it("キャラクターの更新に失敗したら，受信記録を消して再送でやり直せる", async () => {
-    db.failNext("characters", "update");
+  it("書き込みに失敗したら，キャラクターも履歴も変わらず，再送でやり直せる", async () => {
+    // DBの関数の中で失敗すると，キャラクターの更新と履歴の書き込みが両方取り消される
+    db.failNext("apply_commit_growth", "rpc");
 
     await expect(
       POST(webhookRequest(pushPayload())),
-    ).rejects.toThrow("Failed to update character");
+    ).rejects.toThrow("Failed to apply character growth");
 
     expect(character().current_xp).toBe(0);
+    expect(db.rows("growth_events")).toHaveLength(0);
     expect(db.rows("webhook_deliveries")).toHaveLength(0);
 
-    // 再送されると，今度は経験値が入る
+    // 再送されると，今度は経験値と履歴が1回だけ入る
     const response = await POST(
       webhookRequest(pushPayload()),
     );
 
     expect(response.status).toBe(200);
     expect(character().current_xp).toBe(FEAT_XP);
+    expect(db.rows("growth_events")).toHaveLength(1);
   });
 
   it("連携情報の取得に失敗したら，受信記録を消す", async () => {
@@ -370,18 +373,6 @@ describe("処理の途中での失敗", () => {
     ).rejects.toThrow("Failed to fetch GitHub installation");
 
     expect(db.rows("webhook_deliveries")).toHaveLength(0);
-  });
-
-  it("成長履歴の書き込みだけ失敗した時は，経験値が二重に入らないよう成功として扱う", async () => {
-    db.failNext("growth_events", "insert");
-
-    const response = await POST(
-      webhookRequest(pushPayload()),
-    );
-
-    expect(response.status).toBe(200);
-    expect(character().current_xp).toBe(FEAT_XP);
-    expect(db.rows("webhook_deliveries")).toHaveLength(1);
   });
 });
 
