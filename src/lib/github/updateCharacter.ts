@@ -18,6 +18,13 @@ import type { CharacterType } from "@/lib/characters/generated-types";
 // 同時更新で競合した時に，読み直してやり直す回数の上限
 const MAX_UPDATE_ATTEMPTS = 3;
 
+/*
+ * 1回のpushで，GitHub APIから差分を取得するコミットの数の上限．
+ * GitHubの回数制限（1時間に5,000回）と，通知に10秒以内に返事する制限に
+ * 余裕を持って収まるようにする．
+ */
+const MAX_FETCHED_COMMITS = 50;
+
 type SupabaseAdminClient = ReturnType<
   typeof createAdminClient
 >;
@@ -28,6 +35,7 @@ type CharacterRow = {
   level: number;
   current_xp: number;
   required_xp: number;
+  created_at: string;
 };
 
 /*
@@ -42,7 +50,7 @@ async function fetchCharacter(
   const { data, error } = await supabase
     .from("characters")
     .select(
-      "id, character_type, level, current_xp, required_xp",
+      "id, character_type, level, current_xp, required_xp, created_at",
     )
     .eq("repository_id", repositoryId)
     .maybeSingle();
@@ -128,7 +136,8 @@ function getFilesFromPayload(
 
 /*
  * GitHub APIで変更行数まで取得する．
- * 取得できなかったコミットは通知のファイル一覧で代用する．
+ * 取得できなかったコミットと，上限を超えた分のコミットは，
+ * 通知のファイル一覧で代用する（行数が分からないので変更量ボーナスは付かない）．
  */
 async function getChangedFiles(
   payload: PushWebhookPayload,
@@ -146,7 +155,9 @@ async function getChangedFiles(
         installationId: payload.installation.id,
         owner,
         repo: payload.repository.name,
-        shas: commits.map((commit) => commit.id),
+        shas: commits
+          .slice(0, MAX_FETCHED_COMMITS)
+          .map((commit) => commit.id),
       });
     } catch (error) {
       console.error(
@@ -271,14 +282,32 @@ export async function updateCharacter(
     return;
   }
 
+  /*
+   * キャラクターが誕生する前に作られたコミットには経験値を付けない．
+   * 過去の履歴をまとめてpushした時に，一気に育たないようにする．
+   */
+  const birthTime = new Date(
+    firstCharacter.created_at,
+  ).getTime();
+
+  const countedCommits = commits.filter(
+    (commit) =>
+      !commit.timestamp ||
+      new Date(commit.timestamp).getTime() >= birthTime,
+  );
+
+  if (countedCommits.length === 0) {
+    return;
+  }
+
 
   // コミットごとに経験値を計算
   const changedFiles = await getChangedFiles(
     payload,
-    commits,
+    countedCommits,
   );
 
-  const results = commits.map((commit, index) =>
+  const results = countedCommits.map((commit, index) =>
     calculateCommitXp({
       message: commit.message,
       files: changedFiles[index],
@@ -395,7 +424,8 @@ export async function updateCharacter(
               ),
               xp: result.xp,
               description: result.subject,
-              created_at: commits[index].timestamp ?? now,
+              created_at:
+                countedCommits[index].timestamp ?? now,
             },
           ]
         : [],
