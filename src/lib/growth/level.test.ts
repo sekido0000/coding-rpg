@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { addXp } from "./level";
+import { addXp, getTotalXp } from "./level";
 
 describe("addXp", () => {
   it("必要経験値に届かない時はレベルが上がらない", () => {
@@ -43,5 +43,26 @@ describe("addXp", () => {
       requiredXp: 300,
       reachedLevels: [2, 3],
     });
+  });
+});
+
+describe("getTotalXp", () => {
+  it("レベル1では，今の経験値がそのまま合計になる", () => {
+    expect(getTotalXp(1, 40)).toBe(40);
+  });
+
+  it("レベルが上がった分の必要経験値を足す", () => {
+    // レベル1→2で100，2→3で200
+    expect(getTotalXp(3, 50)).toBe(100 + 200 + 50);
+  });
+
+  it("addXp で加えた分だけ，合計が増える", () => {
+    const before = { level: 2, currentXp: 180, requiredXp: 200 };
+    const after = addXp(before, 150);
+
+    expect(
+      getTotalXp(after.level, after.currentXp) -
+        getTotalXp(before.level, before.currentXp),
+    ).toBe(150);
   });
 });
