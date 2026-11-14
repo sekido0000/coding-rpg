@@ -5,11 +5,13 @@ import Image from "next/image";
 import Link from "next/link";
 import {
   useEffect,
+  useRef,
   useState,
   type CSSProperties,
 } from "react";
 
 import { useGrowthReactions } from "@/components/world/use-growth-reactions";
+import { useConversations } from "@/components/world/use-conversations";
 import { useSpeeches } from "@/components/world/use-speeches";
 import { VillageScenery } from "@/components/world/village-scenery";
 import { getCharacterEvolution } from "@/lib/characters/catalog";
@@ -46,7 +48,9 @@ type Walker = {
   // 今の場所まで歩いてくるのにかける時間（ミリ秒）
   duration: number;
   isFacingLeft: boolean;
-  // 次に歩き出す時刻
+  // 今の場所に着く時刻
+  arrivedAt: number;
+  // 次に歩き出す時刻（会話中は Infinity にして止める）
   nextMoveAt: number;
 };
 
@@ -67,6 +71,7 @@ function getInitialWalker(
     position: getInitialPosition(index, total),
     duration: 0,
     isFacingLeft: false,
+    arrivedAt: 0,
     nextMoveAt: 0,
   };
 }
@@ -112,7 +117,14 @@ export function RepositoryWorld({
     Record<string, Walker>
   >({});
 
-  const { speeches, say } = useSpeeches(
+  // 会話のタイマーの中から最新の位置を読むために，参照でも持っておく
+  const walkersRef = useRef(walkers);
+
+  useEffect(() => {
+    walkersRef.current = walkers;
+  }, [walkers]);
+
+  const { speeches, say, setBusy, isSpeaking } = useSpeeches(
     characters,
     activity,
   );
@@ -122,6 +134,16 @@ export function RepositoryWorld({
     activity,
     say,
   );
+
+  useConversations({
+    characters,
+    activity,
+    walkersRef,
+    setWalkers,
+    say,
+    setBusy,
+    isSpeaking,
+  });
 
   const characterIds = characters
     .map((character) => character.id)
@@ -180,6 +202,7 @@ export function RepositoryWorld({
             duration,
             isFacingLeft:
               target.x < walker.position.x,
+            arrivedAt: now + duration,
             nextMoveAt:
               now + duration + pickIdleTime(Math.random),
           };
