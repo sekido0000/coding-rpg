@@ -1,5 +1,6 @@
 "use client";
 
+import { DotGothic16 } from "next/font/google";
 import Image from "next/image";
 import Link from "next/link";
 import {
@@ -19,6 +20,17 @@ import {
   type Position,
 } from "@/lib/world/movement";
 import type { Character } from "@/types/character";
+
+/*
+ * 見出しに使うドット文字のフォント．
+ * 日本語の文字は数が多く，先読みの対象（subsets）に含められないため，
+ * 先読みはしない．
+ */
+const pixelFont = DotGothic16({
+  weight: "400",
+  subsets: ["latin"],
+  preload: false,
+});
 
 type RepositoryWorldProps = {
   characters: Character[];
@@ -147,17 +159,15 @@ export function RepositoryWorld({
       <div className="repo-moon" />
       <div className="repo-stars" />
 
-      {/* 村の入り口の看板 */}
+      {/* ドット文字の見出し（影もずらしてゲームの文字のように見せる） */}
       <div className="absolute left-4 top-4 z-[110] sm:left-6 sm:top-5">
-        <div className="rounded-lg border-2 border-[#4a2a14] bg-[#7a4a26] px-4 py-2 shadow-[0_4px_0_#3a200f,0_10px_18px_rgba(0,0,0,0.45)] sm:px-5 sm:py-2.5">
-          <h2
-            id="repository-world-title"
-            className="text-lg font-black tracking-wide text-amber-50 [text-shadow:0_2px_0_#3a200f] sm:text-2xl"
-          >
-            リポジトリワールド
-          </h2>
-        </div>
-        <p className="mt-2 text-xs text-slate-300 [text-shadow:0_1px_2px_rgba(0,0,0,0.8)]">
+        <h2
+          id="repository-world-title"
+          className={`${pixelFont.className} text-xl tracking-wider text-emerald-100 [text-shadow:2px_2px_0_#064e3b,4px_4px_0_rgba(0,0,0,0.45)] sm:text-3xl`}
+        >
+          リポジトリワールド
+        </h2>
+        <p className="mt-1.5 text-xs text-slate-300 [text-shadow:0_1px_2px_rgba(0,0,0,0.8)]">
           キャラクターを押すと，詳細が見られます
         </p>
       </div>
