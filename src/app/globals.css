@@ -183,10 +183,56 @@ body {
   }
 }
 
+/* リポジトリワールドで経験値が入った時に，数字が浮かんで消える */
+.world-xp-pop {
+  animation: world-xp-pop 2.4s ease-out forwards;
+}
+
+/* レベルが上がった時に，キャラクターのまわりが光る */
+.world-level-up {
+  animation: world-level-up 1.2s ease-in-out 3;
+}
+
+@keyframes world-xp-pop {
+  0% {
+    opacity: 0;
+    transform: translateY(6px) scale(0.8);
+  }
+  15% {
+    opacity: 1;
+    transform: translateY(0) scale(1.1);
+  }
+  70% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-36px) scale(1);
+  }
+}
+
+@keyframes world-level-up {
+  0%,
+  100% {
+    opacity: 0.2;
+    transform: scale(0.8);
+  }
+  50% {
+    opacity: 0.9;
+    transform: scale(1.15);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .repo-character-walk,
   .repo-character-float,
   .repo-character-shadow {
+    animation: none;
+  }
+
+  /* 動かさずに表示だけする */
+  .world-xp-pop,
+  .world-level-up {
     animation: none;
   }
 }

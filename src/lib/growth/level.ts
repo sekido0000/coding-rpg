@@ -40,3 +40,17 @@ export function addXp(
     reachedLevels,
   };
 }
+
+/*
+ * レベル1から数えた，これまでに得た経験値の合計．
+ * 必要経験値はレベル1で100，そこから1つ上がるごとに100ずつ増える．
+ */
+export function getTotalXp(level: number, currentXp: number) {
+  const completedLevels = level - 1;
+
+  return (
+    (REQUIRED_XP_INCREMENT * completedLevels * (completedLevels + 1)) /
+      2 +
+    currentXp
+  );
+}

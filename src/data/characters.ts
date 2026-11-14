@@ -1,23 +1,11 @@
 import "server-only";
 
 import { createClient } from "@/lib/supabase/server";
-import type {
-  Character,
-  CharacterPersonality,
-} from "@/types/character";
+import type { Character } from "@/types/character";
 import {
   isCharacterType,
 } from "@/lib/characters/catalog";
-
-function isCharacterPersonality(
-  value: string,
-): value is CharacterPersonality {
-  return [
-    "cheerful",
-    "calm",
-    "serious",
-  ].includes(value);
-}
+import { isCharacterPersonality } from "@/lib/characters/personality";
 
 type CharacterRecord = {
   id: string;

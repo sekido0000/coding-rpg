@@ -10,6 +10,12 @@ import { createCharacterAction } from "@/app/actions/character-actions";
 import {
   CHARACTER_CATALOG,
 } from "@/lib/characters/catalog";
+import { CHARACTER_NAME_MAX_LENGTH } from "@/lib/characters/name";
+import {
+  CHARACTER_PERSONALITIES,
+  PERSONALITY_INFO,
+  type CharacterPersonality,
+} from "@/lib/characters/personality";
 import {
   CHARACTER_TYPES,
   type CharacterType,
@@ -48,6 +54,13 @@ export function CharacterSetupForm({
     setCharacterType,
   ] = useState<CharacterType>(
     CHARACTER_TYPES[0],
+  );
+
+  const [
+    personality,
+    setPersonality,
+  ] = useState<CharacterPersonality>(
+    CHARACTER_PERSONALITIES[0],
   );
 
   const definition =
@@ -135,6 +148,71 @@ export function CharacterSetupForm({
             </p>
             <p className="mt-1 text-sm leading-6 text-slate-400">
               {definition.description}
+            </p>
+          </div>
+
+          <fieldset>
+            <legend className="text-sm font-medium text-slate-300">
+              性格
+            </legend>
+
+            <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4">
+              {CHARACTER_PERSONALITIES.map((value) => {
+                const isSelected = value === personality;
+
+                return (
+                  <label
+                    key={value}
+                    className={`cursor-pointer rounded-xl border px-3 py-2 text-center text-sm font-semibold transition has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-emerald-300 ${
+                      isSelected
+                        ? "border-emerald-400 bg-emerald-400/10 text-white"
+                        : "border-slate-700 bg-slate-950 text-slate-300 hover:border-slate-500"
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="personality"
+                      value={value}
+                      checked={isSelected}
+                      onChange={() => setPersonality(value)}
+                      className="sr-only"
+                    />
+                    {PERSONALITY_INFO[value].label}
+                  </label>
+                );
+              })}
+            </div>
+
+            <div className="mt-2 rounded-xl bg-slate-950/70 px-4 py-3">
+              <p className="text-sm text-white">
+                「{PERSONALITY_INFO[personality].sample}」
+              </p>
+              <p className="mt-1 text-xs text-slate-500">
+                {PERSONALITY_INFO[personality].description}．
+                あとから変えることはできません．
+              </p>
+            </div>
+          </fieldset>
+
+          <div>
+            <label
+              htmlFor={`character-name-${repositoryId}`}
+              className="text-sm font-medium text-slate-300"
+            >
+              名前
+            </label>
+            <input
+              id={`character-name-${repositoryId}`}
+              name="name"
+              type="text"
+              required
+              maxLength={CHARACTER_NAME_MAX_LENGTH}
+              autoComplete="off"
+              placeholder="例：ポチ"
+              className="mt-2 w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none transition placeholder:text-slate-600 focus:border-emerald-400"
+            />
+            <p className="mt-1.5 text-xs text-slate-500">
+              {CHARACTER_NAME_MAX_LENGTH}文字まで．あとから変えることはできません．
             </p>
           </div>
 
