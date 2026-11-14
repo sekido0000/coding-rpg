@@ -5,10 +5,7 @@ import {
   toCommitEventType,
   type ChangedFile,
 } from "@/lib/growth/xp";
-import {
-  addXp,
-  type LevelUpResult,
-} from "@/lib/growth/level";
+import { addXp } from "@/lib/growth/level";
 import {
   getCharacterEvolution,
   isCharacterType,
@@ -325,21 +322,45 @@ export async function updateCharacter(
   }
 
 
+  // 成長履歴に残すコミット（経験値の入らなかった空コミット・マージなどは残さない）
+  const now = new Date().toISOString();
+
+  const commitEvents = results.flatMap(
+    (result, index) =>
+      result.xp > 0
+        ? [
+            {
+              event_type: toCommitEventType(
+                result.category,
+              ),
+              xp: result.xp,
+              description: result.subject,
+              created_at:
+                countedCommits[index].timestamp ?? now,
+            },
+          ]
+        : [],
+  );
+
   /*
-   * キャラクター更新．
+   * キャラクターの更新と成長履歴の書き込み．
+   *
+   * DBの関数（apply_commit_growth）で，2つをまとめて1回の処理にする．
+   * 途中で失敗した時は両方取り消されるので，例外を投げて再送でやり直せる．
+   *
    * 同じキャラクターへの通知が同時に届くと，片方の加算が
    * 上書きで消えてしまう．読み込んだ時からレベルと経験値が
    * 変わっていない時だけ更新し，変わっていたら読み直してやり直す．
    */
   let character: CharacterRow | null = firstCharacter;
-  let growth: LevelUpResult | null = null;
+  let isApplied = false;
 
   for (
     let attempt = 1;
     attempt <= MAX_UPDATE_ATTEMPTS && character;
     attempt += 1
   ) {
-    const nextGrowth = addXp(
+    const growth = addXp(
       {
         level: character.level,
         currentXp: character.current_xp,
@@ -348,43 +369,51 @@ export async function updateCharacter(
       gainedXp,
     );
 
-    const evolution = getCharacterEvolution(
-      character.character_type,
-      nextGrowth.level,
-    );
+    const characterType = character.character_type;
 
     const activity =
-      nextGrowth.reachedLevels.length > 0
-        ? `レベル${nextGrowth.level}に進化しました！`
+      growth.reachedLevels.length > 0
+        ? `レベル${growth.level}に進化しました！`
         : `${gainedXp} XP獲得しました`;
 
-    const {
-      data: updated,
-      error: updateError,
-    } = await supabase
-      .from("characters")
-      .update({
-        level: nextGrowth.level,
-        current_xp: nextGrowth.currentXp,
-        required_xp: nextGrowth.requiredXp,
-        image_path: evolution.imagePath,
-        latest_activity: activity,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", character.id)
-      .eq("level", character.level)
-      .eq("current_xp", character.current_xp)
-      .select("id")
-      .maybeSingle();
+    const levelUpEvents = growth.reachedLevels.map(
+      (level) => ({
+        event_type: "level_up",
+        xp: 0,
+        description: `レベル${level}：${
+          getCharacterEvolution(characterType, level).name
+        }へ進化しました！`,
+        created_at: now,
+      }),
+    );
 
-    if (updateError) {
+    const { data: applied, error: applyError } =
+      await supabase.rpc("apply_commit_growth", {
+        p_character_id: character.id,
+        p_expected_level: character.level,
+        p_expected_current_xp: character.current_xp,
+        p_level: growth.level,
+        p_current_xp: growth.currentXp,
+        p_required_xp: growth.requiredXp,
+        p_image_path: getCharacterEvolution(
+          characterType,
+          growth.level,
+        ).imagePath,
+        p_latest_activity: activity,
+        p_events: [
+          ...commitEvents,
+          ...levelUpEvents,
+        ],
+      });
+
+    if (applyError) {
       throw new Error(
-        `Failed to update character: ${updateError.message}`,
+        `Failed to apply character growth: ${applyError.message}`,
       );
     }
 
-    if (updated) {
-      growth = nextGrowth;
+    if (applied) {
+      isApplied = true;
       break;
     }
 
@@ -400,68 +429,9 @@ export async function updateCharacter(
     return;
   }
 
-  if (!growth) {
+  if (!isApplied) {
     throw new Error(
       "Character update conflicted too many times",
-    );
-  }
-
-  const updatedCharacter = character;
-
-
-  // 成長履歴（コミットごと＋レベルアップごと）
-  const now = new Date().toISOString();
-
-  // 経験値の入らなかったコミット（空コミット・マージなど）は履歴に残さない
-  const commitEvents = results.flatMap(
-    (result, index) =>
-      result.xp > 0
-        ? [
-            {
-              character_id: updatedCharacter.id,
-              event_type: toCommitEventType(
-                result.category,
-              ),
-              xp: result.xp,
-              description: result.subject,
-              created_at:
-                countedCommits[index].timestamp ?? now,
-            },
-          ]
-        : [],
-  );
-
-  const levelUpEvents = growth.reachedLevels.map(
-    (level) => ({
-      character_id: updatedCharacter.id,
-      event_type: "level_up",
-      xp: 0,
-      description: `レベル${level}：${
-        getCharacterEvolution(
-          updatedCharacter.character_type,
-          level,
-        ).name
-      }へ進化しました！`,
-      created_at: now,
-    }),
-  );
-
-  const { error: eventError } = await supabase
-    .from("growth_events")
-    .insert([
-      ...commitEvents,
-      ...levelUpEvents,
-    ]);
-
-  /*
-   * キャラクターの経験値はすでに加えているので，ここでは例外を投げない．
-   * 例外にすると再送で経験値がもう一度加わってしまうため，
-   * 履歴が欠ける方を選ぶ．
-   */
-  if (eventError) {
-    console.error(
-      "Growth event insert failed:",
-      eventError,
     );
   }
 
