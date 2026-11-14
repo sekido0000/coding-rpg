@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
 
+import { syncInstallationRepositoriesFromWebhook } from "@/lib/github/sync-repositories";
 import { updateCharacter } from "@/lib/github/updateCharacter";
 import { createAdminClient } from "@/lib/supabase/admin";
 
@@ -213,6 +214,16 @@ export async function POST(
     }
   }
 
+
+  /*
+   * GitHubの設定画面でリポジトリの選択が変わった時に，アプリを合わせる．
+   * 何度処理しても結果は同じなので，再送の除外はしない．
+   */
+  if (event === "installation_repositories") {
+    await syncInstallationRepositoriesFromWebhook(
+      payload.installation.id,
+    );
+  }
 
   if (event === "push") {
     const deliveryId =

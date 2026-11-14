@@ -1,7 +1,7 @@
 import Image from "next/image";
 import { PendingLink } from "@/components/ui/pending-link";
 
-import { DeleteRepositoryButton } from "@/components/repositories/delete-repository-button";
+import { UnlinkRepositoryButton } from "@/components/repositories/unlink-repository-button";
 import {
   CHARACTER_CATALOG,
   getCharacterEvolution,
@@ -89,12 +89,12 @@ export function RepositoryWorld({
             >
               GitHubで開く ↗
             </a>
-            <DeleteRepositoryButton
-              repositoryId={
-                character.repositoryId
-              }
+            <UnlinkRepositoryButton
               repositoryName={
                 `${character.repositoryOwner}/${character.repositoryName}`
+              }
+              githubInstallationId={
+                character.githubInstallationId
               }
               compact
             />

@@ -23,6 +23,8 @@ import {
 const mocks = vi.hoisted(() => ({
   db: null as unknown,
   commitFiles: new Map<string, unknown>(),
+  // GitHubで今選ばれているリポジトリ
+  installationRepositories: [] as unknown[],
 }));
 
 vi.mock("@/lib/supabase/admin", () => ({
@@ -31,6 +33,11 @@ vi.mock("@/lib/supabase/admin", () => ({
 
 vi.mock("@/lib/github/commits", () => ({
   getCommitFiles: async () => mocks.commitFiles,
+}));
+
+vi.mock("@/lib/github/installation-repositories", () => ({
+  listInstallationRepositories: async () =>
+    mocks.installationRepositories,
 }));
 
 const { POST } = await import("./route");
@@ -62,11 +69,16 @@ let db: FakeSupabase;
 function seed(character: Partial<Row> = {}) {
   db = new FakeSupabase({
     github_installations: [
-      { id: "installation-1", github_installation_id: 1 },
+      {
+        id: "installation-1",
+        github_installation_id: 1,
+        user_id: "user-1",
+      },
     ],
     repositories: [
       {
         id: "repository-1",
+        user_id: "user-1",
         github_installation_id: "installation-1",
         github_repository_id: 100,
         name: "demo",
@@ -153,6 +165,7 @@ beforeEach(() => {
   mocks.commitFiles = new Map([
     [FEAT_COMMIT.id, FEAT_FILES],
   ]);
+  mocks.installationRepositories = [];
   seed();
 
   // 処理中のログでテストの出力が埋まらないようにする
@@ -361,5 +374,92 @@ describe("処理の途中での失敗", () => {
     expect(response.status).toBe(200);
     expect(character().current_xp).toBe(FEAT_XP);
     expect(db.rows("webhook_deliveries")).toHaveLength(1);
+  });
+});
+
+describe("GitHubの設定画面でのリポジトリの追加・削除", () => {
+  // GitHubから返ってくるリポジトリの情報
+  function githubRepository(id: number, name: string) {
+    return {
+      id,
+      owner: "octocat",
+      name,
+      defaultBranch: "main",
+      htmlUrl: `https://github.com/octocat/${name}`,
+      isPrivate: false,
+      visibility: "public",
+    };
+  }
+
+  function repositoriesEvent(action: "added" | "removed") {
+    return webhookRequest(
+      { action, installation: { id: 1 } },
+      { event: "installation_repositories" },
+    );
+  }
+
+  function repository(githubRepositoryId: number) {
+    return db
+      .rows("repositories")
+      .find(
+        (row) =>
+          row.github_repository_id === githubRepositoryId,
+      );
+  }
+
+  it("追加されたリポジトリが，本人のリポジトリとして有効になる", async () => {
+    mocks.installationRepositories = [
+      githubRepository(100, "demo"),
+      githubRepository(200, "new-repo"),
+    ];
+
+    const response = await POST(repositoriesEvent("added"));
+
+    expect(response.status).toBe(200);
+    expect(repository(200)).toMatchObject({
+      user_id: "user-1",
+      github_installation_id: "installation-1",
+      name: "new-repo",
+      is_active: true,
+    });
+    expect(repository(100)?.is_active).toBe(true);
+  });
+
+  it("選択を外されたリポジトリは無効になるが，キャラクターは残る", async () => {
+    mocks.installationRepositories = [];
+
+    await POST(repositoriesEvent("removed"));
+
+    expect(repository(100)?.is_active).toBe(false);
+    expect(db.rows("characters")).toHaveLength(1);
+  });
+
+  it("選び直すと，同じリポジトリがキャラクターごと戻ってくる", async () => {
+    db.rows("repositories")[0].is_active = false;
+    mocks.installationRepositories = [
+      githubRepository(100, "demo"),
+    ];
+
+    await POST(repositoriesEvent("added"));
+
+    expect(db.rows("repositories")).toHaveLength(1);
+    expect(repository(100)?.is_active).toBe(true);
+    expect(character().repository_id).toBe("repository-1");
+  });
+
+  it("アプリで連携の設定が終わっていないインストールは無視する", async () => {
+    mocks.installationRepositories = [
+      githubRepository(300, "other"),
+    ];
+
+    const response = await POST(
+      webhookRequest(
+        { action: "added", installation: { id: 999 } },
+        { event: "installation_repositories" },
+      ),
+    );
+
+    expect(response.status).toBe(200);
+    expect(repository(300)).toBeUndefined();
   });
 });

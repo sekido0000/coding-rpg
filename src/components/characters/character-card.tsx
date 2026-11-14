@@ -2,7 +2,7 @@ import Image from "next/image";
 import { PendingLink } from "@/components/ui/pending-link";
 
 import { EvolutionRoadmap } from "@/components/characters/evolution-roadmap";
-import { DeleteRepositoryButton } from "@/components/repositories/delete-repository-button";
+import { UnlinkRepositoryButton } from "@/components/repositories/unlink-repository-button";
 import {
   CHARACTER_CATALOG,
   getCharacterEvolution,
@@ -176,12 +176,12 @@ export function CharacterCard({
             詳細情報
           </PendingLink>
 
-          <DeleteRepositoryButton
-            repositoryId={
-              character.repositoryId
-            }
+          <UnlinkRepositoryButton
             repositoryName={
               `${character.repositoryOwner}/${character.repositoryName}`
+            }
+            githubInstallationId={
+              character.githubInstallationId
             }
           />
         </div>
