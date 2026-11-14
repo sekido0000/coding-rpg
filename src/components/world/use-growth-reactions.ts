@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import {
   getRecentLineIds,
   rememberLineId,
+  type Speech,
 } from "@/components/world/use-speeches";
 import { getTotalXp } from "@/lib/growth/level";
 import type { ActivitySummary } from "@/lib/world/activity";
@@ -18,8 +19,18 @@ export type GrowthReaction = {
   isLevelUp: boolean;
 };
 
+// 世界の上の方に出す，経験値が入ったことのお知らせ
+export type GrowthAnnouncement = {
+  key: number;
+  text: string;
+  isLevelUp: boolean;
+};
+
 // 「+XP」やレベルアップの光を出しておく時間（ミリ秒）
-const REACTION_DURATION = 3600;
+const REACTION_DURATION = 4000;
+
+// お知らせを出しておく時間（ミリ秒．CSS の world-announce と合わせる）
+const ANNOUNCEMENT_DURATION = 4000;
 
 // 経験値が入った時のセリフを出しておく時間（ミリ秒）
 const REACTION_SPEECH_DURATION = 6000;
@@ -28,6 +39,7 @@ type Say = (
   characterId: string,
   text: string,
   duration?: number,
+  kind?: Speech["kind"],
 ) => void;
 
 /*
@@ -36,6 +48,7 @@ type Say = (
  * ホームの Realtime でキャラクターが更新されると，characters が変わる．
  * 前の値と比べて経験値が増えたキャラクターに「+XP」を浮かべ，
  * 性格に合ったセリフを言わせる．レベルが上がった時は光らせる．
+ * 世界の上の方にも，誰が何XP得たかのお知らせを出す．
  */
 export function useGrowthReactions(
   characters: Character[],
@@ -45,6 +58,9 @@ export function useGrowthReactions(
   const [reactions, setReactions] = useState<
     Record<string, GrowthReaction>
   >({});
+
+  const [announcement, setAnnouncement] =
+    useState<GrowthAnnouncement | null>(null);
 
   const previousRef = useRef(
     new Map(
@@ -128,7 +144,29 @@ export function useGrowthReactions(
       });
 
       rememberLineId(line.id);
-      say(character.id, line.text, REACTION_SPEECH_DURATION);
+      say(
+        character.id,
+        line.text,
+        REACTION_SPEECH_DURATION,
+        "reaction",
+      );
+
+      setAnnouncement({
+        key,
+        text: isLevelUp
+          ? `${character.name}がレベル${character.level}に進化！`
+          : `${character.name}が ${gainedXp} XP 獲得！`,
+        isLevelUp,
+      });
+
+      const announcementTimer = window.setTimeout(() => {
+        timers.delete(announcementTimer);
+        setAnnouncement((current) =>
+          current?.key === key ? null : current,
+        );
+      }, ANNOUNCEMENT_DURATION);
+
+      timers.add(announcementTimer);
     }
 
     previousRef.current = new Map(
@@ -136,5 +174,5 @@ export function useGrowthReactions(
     );
   }, [characters, activity, say]);
 
-  return reactions;
+  return { reactions, announcement };
 }

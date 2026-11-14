@@ -67,12 +67,12 @@ export function getRecentLineIds() {
 }
 
 /*
- * 吹き出しの中身．
- * 会話（talk）の吹き出しは，独り言（solo）と見分けられるよう色を変える．
+ * 吹き出しの中身．種類ごとに色を変えて見分けられるようにする．
+ * solo：独り言，talk：会話，reaction：経験値が入った時の反応
  */
 export type Speech = {
   text: string;
-  kind: "solo" | "talk";
+  kind: "solo" | "talk" | "reaction";
 };
 
 function randomBetween({ min, max }: { min: number; max: number }) {
