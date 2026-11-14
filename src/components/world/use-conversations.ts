@@ -11,17 +11,24 @@ import {
 import {
   getRecentLineIds,
   rememberLineId,
+  type Speech,
 } from "@/components/world/use-speeches";
 import type { ActivitySummary } from "@/lib/world/activity";
 import {
   pickConversation,
   type Talker,
 } from "@/lib/world/conversation";
-import type { Position } from "@/lib/world/movement";
+import {
+  WALK_AREA,
+  getWalkDuration,
+  type Position,
+} from "@/lib/world/movement";
 import type { Character } from "@/types/character";
 
 export type ConversationWalker = {
   position: Position;
+  // 今の場所まで歩いてくるのにかける時間（ミリ秒）
+  duration: number;
   isFacingLeft: boolean;
   // 目的地に着く時刻
   arrivedAt: number;
@@ -32,8 +39,14 @@ export type ConversationWalker = {
 // 会話を始めるか確かめる間隔（ミリ秒）
 const CHECK_INTERVAL = 1500;
 
-// この距離（%）より近くで立ち止まっている2人が会話する
-const TALK_DISTANCE = 22;
+// この距離（%）より近くで立ち止まっている2人が，歩み寄って会話する
+const TALK_DISTANCE = 30;
+
+// 会話する時に並ぶ，2人の間の距離（%）
+const MEETING_GAP = 12;
+
+// 歩み寄ってから話し始めるまでの間（ミリ秒）
+const MEETING_PAUSE = 400;
 
 // 近くにいても，すぐには話しかけない（確かめるたびにこの確率で始める）
 const START_CHANCE = 0.5;
@@ -41,16 +54,45 @@ const START_CHANCE = 0.5;
 // 1人のキャラクターが，次に会話するまで空ける時間（ミリ秒）
 const TALK_COOLDOWN = 25000;
 
-// 会話のセリフを出す間隔と，出しておく時間（ミリ秒）
-const LINE_GAP = 3300;
-const LINE_DURATION = 3100;
+// 会話のセリフを出す間隔と，最後のセリフを出しておく時間（ミリ秒）
+const LINE_GAP = 3000;
+const LAST_LINE_DURATION = 3500;
+
+/*
+ * 2人が会話する時に並ぶ場所．
+ * 2人の真ん中を中心に，今の左右の並びを保ったまま横に並べる．
+ */
+function getMeetingPositions(a: Position, b: Position) {
+  const centerX = Math.min(
+    Math.max((a.x + b.x) / 2, WALK_AREA.minX + MEETING_GAP / 2),
+    WALK_AREA.maxX - MEETING_GAP / 2,
+  );
+  const y = (a.y + b.y) / 2;
+  const aIsLeft = a.x <= b.x;
+
+  return {
+    a: {
+      x: centerX + (aIsLeft ? -1 : 1) * (MEETING_GAP / 2),
+      y,
+    },
+    b: {
+      x: centerX + (aIsLeft ? 1 : -1) * (MEETING_GAP / 2),
+      y,
+    },
+  };
+}
 
 type UseConversationsParams<T extends ConversationWalker> = {
   characters: Character[];
   activity: Record<string, ActivitySummary>;
   walkersRef: RefObject<Record<string, T>>;
   setWalkers: Dispatch<SetStateAction<Record<string, T>>>;
-  say: (characterId: string, text: string, duration?: number) => void;
+  say: (
+    characterId: string,
+    text: string,
+    duration?: number,
+    kind?: Speech["kind"],
+  ) => void;
   setBusy: (characterIds: string[], isBusy: boolean) => void;
   isSpeaking: (characterId: string) => boolean;
 };
@@ -160,26 +202,41 @@ export function useConversations<T extends ConversationWalker>({
 
       setBusy(ids, true);
 
-      // 2人とも止めて，向かい合わせる
-      setWalkers((current) => {
-        const a = current[speaker.id];
-        const b = current[listener.id];
+      /*
+       * 会話していると分かるよう，2人を真ん中あたりへ歩み寄らせ，
+       * 並んで向かい合わせてから話し始める．
+       */
+      const now = Date.now();
+      const a = walkersRef.current[speaker.id];
+      const b = walkersRef.current[listener.id];
+      const meeting = getMeetingPositions(a.position, b.position);
+      const walkTime = Math.max(
+        getWalkDuration(a.position, meeting.a),
+        getWalkDuration(b.position, meeting.b),
+      );
 
-        if (!a || !b) {
+      setWalkers((current) => {
+        if (!current[speaker.id] || !current[listener.id]) {
           return current;
         }
 
         return {
           ...current,
           [speaker.id]: {
-            ...a,
+            ...current[speaker.id],
+            position: meeting.a,
+            duration: getWalkDuration(a.position, meeting.a),
+            isFacingLeft: meeting.b.x < meeting.a.x,
+            arrivedAt: now + walkTime,
             nextMoveAt: Infinity,
-            isFacingLeft: b.position.x < a.position.x,
           },
           [listener.id]: {
-            ...b,
+            ...current[listener.id],
+            position: meeting.b,
+            duration: getWalkDuration(b.position, meeting.b),
+            isFacingLeft: meeting.a.x < meeting.b.x,
+            arrivedAt: now + walkTime,
             nextMoveAt: Infinity,
-            isFacingLeft: a.position.x < b.position.x,
           },
         };
       });
@@ -195,15 +252,29 @@ export function useConversations<T extends ConversationWalker>({
 
       rememberLineId(conversation.topicId);
 
+      // 歩み寄ってから話し始め，最後のセリフを読み終えたら終わる
+      const startAt = walkTime + MEETING_PAUSE;
+      const endAt =
+        startAt +
+        (conversation.lines.length - 1) * LINE_GAP +
+        LAST_LINE_DURATION;
+
+      /*
+       * 吹き出しは会話が終わるまで残し，やり取りとして読めるようにする．
+       * 同じキャラクターの次のセリフが出ると，前のセリフと入れ替わる．
+       */
       conversation.lines.forEach((line, index) => {
+        const lineAt = startAt + index * LINE_GAP;
+
         later(() => {
           rememberLineId(line.id);
           say(
             line.by === "speaker" ? speaker.id : listener.id,
             line.text,
-            LINE_DURATION,
+            endAt - lineAt,
+            "talk",
           );
-        }, index * LINE_GAP);
+        }, lineAt);
       });
 
       // 会話が終わったら，また歩き出す
@@ -229,7 +300,7 @@ export function useConversations<T extends ConversationWalker>({
         });
 
         isTalking = false;
-      }, conversation.lines.length * LINE_GAP);
+      }, endAt);
     };
 
     const interval = window.setInterval(() => {

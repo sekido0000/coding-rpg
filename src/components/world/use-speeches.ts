@@ -11,20 +11,20 @@ import type { ActivitySummary } from "@/lib/world/activity";
 import { pickSoloLine } from "@/lib/world/speech";
 import type { Character } from "@/types/character";
 
-// 同時に吹き出しを出すキャラクターの最大
-const MAX_SPEAKERS = 2;
+// 吹き出しがこの数以上出ている時は，独り言を始めない（会話中も含む）
+const MAX_SPEAKERS = 1;
 
 // 次の独り言までの間隔（ミリ秒）
 const SPEAK_INTERVAL = {
-  min: 2500,
-  max: 6000,
+  min: 9000,
+  max: 16000,
 } as const;
 
 // 吹き出しを出しておく時間（ミリ秒）
 export const SPEECH_DURATION = 5000;
 
 // 画面を開いてから最初の独り言までの時間（ミリ秒）
-const FIRST_SPEECH_DELAY = 1500;
+const FIRST_SPEECH_DELAY = 3000;
 
 /*
  * 最近出したセリフを，見ている人のブラウザに覚えておく．
@@ -66,6 +66,15 @@ export function getRecentLineIds() {
   return new Set(loadRecentLineIds());
 }
 
+/*
+ * 吹き出しの中身．
+ * 会話（talk）の吹き出しは，独り言（solo）と見分けられるよう色を変える．
+ */
+export type Speech = {
+  text: string;
+  kind: "solo" | "talk";
+};
+
 function randomBetween({ min, max }: { min: number; max: number }) {
   return min + Math.random() * (max - min);
 }
@@ -80,7 +89,7 @@ export function useSpeeches(
   activity: Record<string, ActivitySummary>,
 ) {
   const [speeches, setSpeeches] = useState<
-    Record<string, string>
+    Record<string, Speech>
   >({});
 
   // タイマーの中から最新の値を読むために，参照でも持っておく
@@ -106,6 +115,7 @@ export function useSpeeches(
       characterId: string,
       text: string,
       duration = SPEECH_DURATION,
+      kind: Speech["kind"] = "solo",
     ) => {
       const timers = hideTimersRef.current;
 
@@ -113,7 +123,7 @@ export function useSpeeches(
 
       setSpeeches((current) => ({
         ...current,
-        [characterId]: text,
+        [characterId]: { text, kind },
       }));
 
       timers.set(

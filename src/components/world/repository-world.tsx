@@ -12,7 +12,10 @@ import {
 
 import { useGrowthReactions } from "@/components/world/use-growth-reactions";
 import { useConversations } from "@/components/world/use-conversations";
-import { useSpeeches } from "@/components/world/use-speeches";
+import {
+  useSpeeches,
+  type Speech,
+} from "@/components/world/use-speeches";
 import { VillageScenery } from "@/components/world/village-scenery";
 import { getCharacterEvolution } from "@/lib/characters/catalog";
 import {
@@ -77,12 +80,21 @@ function getInitialWalker(
 }
 
 type SpeechBubbleProps = {
-  text: string;
+  speech: Speech;
   // キャラクターの横の位置（%）．世界の端ではみ出さないよう，吹き出しの向きを変える
   x: number;
+  /*
+   * 会話で並んだ2人の吹き出しが重ならないよう，左側の吹き出しを高く出す．
+   * 左上 → 右下の順に読めるので，漫画のようにやり取りとして読める．
+   */
+  isRaised: boolean;
 };
 
-function SpeechBubble({ text, x }: SpeechBubbleProps) {
+function SpeechBubble({
+  speech,
+  x,
+  isRaised,
+}: SpeechBubbleProps) {
   const align =
     x < 20
       ? { bubble: "left-0", tail: "left-6" }
@@ -93,13 +105,28 @@ function SpeechBubble({ text, x }: SpeechBubbleProps) {
             tail: "left-1/2 -translate-x-1/2",
           };
 
+  // 会話の吹き出しは，独り言（白）と見分けられるよう緑にする
+  const style =
+    speech.kind === "talk"
+      ? {
+          bubble:
+            "bg-emerald-50 text-emerald-950 ring-2 ring-emerald-400",
+          tail: "border-t-emerald-400",
+        }
+      : {
+          bubble: "bg-white text-slate-900",
+          tail: "border-t-white",
+        };
+
   return (
     <span
-      className={`pointer-events-none absolute bottom-full mb-2 w-max max-w-[11rem] rounded-xl bg-white px-3 py-1.5 text-left text-xs leading-5 text-slate-900 shadow-lg transition group-hover:opacity-0 group-focus-visible:opacity-0 sm:max-w-[14rem] sm:text-sm ${align.bubble}`}
+      className={`pointer-events-none absolute bottom-full w-max max-w-[11rem] rounded-xl px-3 py-1.5 text-left text-xs leading-5 shadow-lg transition group-hover:opacity-0 group-focus-visible:opacity-0 sm:max-w-[14rem] sm:text-sm ${
+        isRaised ? "mb-16 sm:mb-14" : "mb-2"
+      } ${style.bubble} ${align.bubble}`}
     >
-      {text}
+      {speech.text}
       <span
-        className={`absolute top-full border-x-[6px] border-t-[6px] border-x-transparent border-t-white ${align.tail}`}
+        className={`absolute top-full border-x-[6px] border-t-[6px] border-x-transparent ${style.tail} ${align.tail}`}
       />
     </span>
   );
@@ -291,8 +318,13 @@ export function RepositoryWorld({
           >
             {speech && (
               <SpeechBubble
-                text={speech}
+                speech={speech}
                 x={walker.position.x}
+                // 会話の相手が右にいる（右を向いている）のは，左側のキャラクター
+                isRaised={
+                  speech.kind === "talk" &&
+                  !walker.isFacingLeft
+                }
               />
             )}
 
