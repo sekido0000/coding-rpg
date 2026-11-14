@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import type { RealtimeChannel } from "@supabase/supabase-js";
 import { PendingLink } from "@/components/ui/pending-link";
 import { CharacterCard } from "@/components/characters/character-card";
 import { CharacterSetupForm } from "@/components/characters/character-setup-form";
@@ -37,57 +38,71 @@ export function CharacterDashboard({
     pendingRepositories.length;
 
   useEffect(() => {
-  const supabase = createClient();
+    const supabase = createClient();
+    let channel: RealtimeChannel | null = null;
 
-  async function setupRealtime() {
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
+    // 準備の途中で画面を離れた時に，チャンネルを作らないようにする
+    let isClosed = false;
 
-    if (session) {
-      supabase.realtime.setAuth(
-        session.access_token
-      );
+    async function setupRealtime() {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      if (isClosed) {
+        return;
+      }
+
+      // 本人のキャラクターだけが届くよう，RLSにログイン情報を渡す
+      if (session) {
+        supabase.realtime.setAuth(
+          session.access_token,
+        );
+      }
+
+      channel = supabase
+        .channel("character-updates")
+        .on<CharacterRealtimeRecord>(
+          "postgres_changes",
+          {
+            event: "UPDATE",
+            schema: "public",
+            table: "characters",
+          },
+          (payload) => {
+            const updated = payload.new;
+
+            setCharacters((current) =>
+              current.map((character) =>
+                character.id === updated.id
+                  ? {
+                      ...character,
+                      name: updated.name,
+                      personality: updated.personality,
+                      characterType: updated.character_type,
+                      level: updated.level,
+                      currentXp: updated.current_xp,
+                      requiredXp: updated.required_xp,
+                      latestActivity: updated.latest_activity,
+                    }
+                  : character,
+              ),
+            );
+          },
+        )
+        // subscribeを呼んで，はじめて変更が届くようになる
+        .subscribe();
     }
 
-    const channel = supabase
-      .channel("character-updates")
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "characters",
-        },
-        (payload) => {
-  const updated =
-    payload.new as CharacterRealtimeRecord;
-
-  setCharacters((current) =>
-    current.map((character) =>
-      character.id === updated.id
-        ? {
-            ...character,
-            name: updated.name,
-            personality: updated.personality,
-            characterType: updated.character_type,
-            level: updated.level,
-            currentXp: updated.current_xp,
-            requiredXp: updated.required_xp,
-            latestActivity: updated.latest_activity,
-          }
-        : character
-    )
-  );
-}
-    );
+    setupRealtime();
 
     return () => {
-      supabase.removeChannel(channel);
-    };
-  }
+      isClosed = true;
 
-    setupRealtime();
+      if (channel) {
+        supabase.removeChannel(channel);
+      }
+    };
   }, []);
 
   return (
