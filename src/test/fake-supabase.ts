@@ -1,0 +1,273 @@
+/*
+ * テスト用の偽のSupabaseクライアント．
+ *
+ * 表をメモリ上の配列で持ち，Webhookの処理で使う書き方
+ * （select・insert・update・delete と eq・maybeSingle・single）だけを再現する．
+ * 本物のDBにはつながない．
+ */
+
+export type Row = Record<string, unknown>;
+
+type DbError = {
+  code?: string;
+  message: string;
+};
+
+type Result = {
+  data: unknown;
+  error: DbError | null;
+};
+
+type Operation =
+  | "select"
+  | "insert"
+  | "update"
+  | "delete";
+
+/*
+ * 更新する直前に呼ばれる処理．
+ * 別の通知が先に書き換えた状況（競合）を作るのに使う．
+ */
+type BeforeUpdate = (
+  table: string,
+  rows: Row[],
+) => void;
+
+// 主キーの重複を確かめる表と列
+const PRIMARY_KEYS: Record<string, string> = {
+  webhook_deliveries: "delivery_id",
+};
+
+class QueryBuilder
+  implements PromiseLike<Result>
+{
+  private operation: Operation = "select";
+  private filters: [string, unknown][] = [];
+  private values: Row | Row[] = {};
+  private returnsRows = false;
+
+  constructor(
+    private db: FakeSupabase,
+    private table: string,
+  ) {}
+
+  select() {
+    // insert・update の後の select は，変更した行を返す指定
+    if (this.operation !== "select") {
+      this.returnsRows = true;
+    }
+
+    return this;
+  }
+
+  insert(values: Row | Row[]) {
+    this.operation = "insert";
+    this.values = values;
+    return this;
+  }
+
+  update(values: Row) {
+    this.operation = "update";
+    this.values = values;
+    return this;
+  }
+
+  delete() {
+    this.operation = "delete";
+    return this;
+  }
+
+  eq(column: string, value: unknown) {
+    this.filters.push([column, value]);
+    return this;
+  }
+
+  async maybeSingle(): Promise<Result> {
+    const { data, error } = this.run();
+
+    if (error) {
+      return { data: null, error };
+    }
+
+    const rows = data as Row[];
+
+    return { data: rows[0] ?? null, error: null };
+  }
+
+  async single(): Promise<Result> {
+    const { data, error } = await this.maybeSingle();
+
+    if (error) {
+      return { data: null, error };
+    }
+
+    if (!data) {
+      return {
+        data: null,
+        error: { message: "No rows found" },
+      };
+    }
+
+    return { data, error: null };
+  }
+
+  then<TResult1 = Result, TResult2 = never>(
+    onfulfilled?:
+      | ((value: Result) => TResult1 | PromiseLike<TResult1>)
+      | null,
+    onrejected?:
+      | ((reason: unknown) => TResult2 | PromiseLike<TResult2>)
+      | null,
+  ) {
+    return Promise.resolve(this.run()).then(
+      onfulfilled,
+      onrejected,
+    );
+  }
+
+  private matches(row: Row) {
+    return this.filters.every(
+      ([column, value]) => row[column] === value,
+    );
+  }
+
+  private run(): Result {
+    const failure = this.db.takeFailure(
+      this.table,
+      this.operation,
+    );
+
+    if (failure) {
+      return { data: null, error: failure };
+    }
+
+    const rows = this.db.rows(this.table);
+
+    switch (this.operation) {
+      case "select":
+        return {
+          data: rows.filter((row) => this.matches(row)),
+          error: null,
+        };
+
+      case "insert": {
+        const newRows = Array.isArray(this.values)
+          ? this.values
+          : [this.values];
+        const key = PRIMARY_KEYS[this.table];
+
+        for (const newRow of newRows) {
+          if (
+            key &&
+            rows.some((row) => row[key] === newRow[key])
+          ) {
+            return {
+              data: null,
+              error: {
+                code: "23505",
+                message: "duplicate key value",
+              },
+            };
+          }
+        }
+
+        rows.push(...newRows.map((row) => ({ ...row })));
+
+        return {
+          data: this.returnsRows ? newRows : null,
+          error: null,
+        };
+      }
+
+      case "update": {
+        this.db.beforeUpdate?.(this.table, rows);
+
+        const targets = rows.filter((row) =>
+          this.matches(row),
+        );
+
+        for (const row of targets) {
+          Object.assign(row, this.values);
+        }
+
+        return {
+          data: this.returnsRows ? targets : null,
+          error: null,
+        };
+      }
+
+      case "delete": {
+        const remaining = rows.filter(
+          (row) => !this.matches(row),
+        );
+
+        rows.splice(0, rows.length, ...remaining);
+
+        return { data: null, error: null };
+      }
+    }
+  }
+}
+
+export class FakeSupabase {
+  beforeUpdate: BeforeUpdate | null = null;
+
+  private tables = new Map<string, Row[]>();
+  private failures: {
+    table: string;
+    operation: Operation;
+    error: DbError;
+  }[] = [];
+
+  constructor(initial: Record<string, Row[]> = {}) {
+    for (const [table, rows] of Object.entries(initial)) {
+      this.tables.set(
+        table,
+        rows.map((row) => ({ ...row })),
+      );
+    }
+  }
+
+  from(table: string) {
+    return new QueryBuilder(this, table);
+  }
+
+  rows(table: string) {
+    if (!this.tables.has(table)) {
+      this.tables.set(table, []);
+    }
+
+    return this.tables.get(table)!;
+  }
+
+  /*
+   * 次にその表へその操作をした時に，エラーを返すようにする．
+   */
+  failNext(
+    table: string,
+    operation: Operation,
+    message = "database error",
+  ) {
+    this.failures.push({
+      table,
+      operation,
+      error: { message },
+    });
+  }
+
+  takeFailure(table: string, operation: Operation) {
+    const index = this.failures.findIndex(
+      (failure) =>
+        failure.table === table &&
+        failure.operation === operation,
+    );
+
+    if (index === -1) {
+      return null;
+    }
+
+    const [failure] = this.failures.splice(index, 1);
+
+    return failure.error;
+  }
+}
