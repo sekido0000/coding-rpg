@@ -11,17 +11,17 @@ import type { Character } from "@/types/character";
 import { GrowthTimeline } from "@/components/repositories/growth-timeline";
 import { getGrowthEvents } from "@/lib/growth/events";
 
-type RepositoryWorldProps = {
+type CharacterDetailProps = {
   character: Character;
   growthEvents: Awaited<
     ReturnType<typeof getGrowthEvents>
   >;
 };
 
-export function RepositoryWorld({
+export function CharacterDetail({
   character,
   growthEvents,
-}: RepositoryWorldProps) {
+}: CharacterDetailProps) {
   const definition =
     CHARACTER_CATALOG[
       character.characterType
@@ -71,7 +71,7 @@ export function RepositoryWorld({
 
             <div className="min-w-0">
               <p className="repo-kicker">
-                Repository world
+                キャラクターの詳細
               </p>
               <h1 className="truncate text-xl font-bold text-white sm:text-2xl">
                 {character.repositoryOwner}/
