@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useId, useRef } from "react";
 
 type UnlinkRepositoryButtonProps = {
   repositoryName: string;
@@ -13,24 +13,31 @@ type UnlinkRepositoryButtonProps = {
  *
  * 連携の解除はGitHubの設定画面で，そのリポジトリの選択を外して行う
  * （アプリの中だけで解除すると，GitHub App の読み取り権限が残るため）．
- * 押すと手順を示し，そのインストールの設定画面へ移れるようにする．
+ * 押すと手順をダイアログで示し，そのインストールの設定画面へ移れるようにする．
+ *
+ * カードには，はみ出た部分を隠す指定（overflow-hidden）があるため，
+ * 説明はカードの中ではなく，画面の一番手前に出る dialog 要素で表示する．
  */
 export function UnlinkRepositoryButton({
   repositoryName,
   githubInstallationId,
   compact = false,
 }: UnlinkRepositoryButtonProps) {
-  const [isOpen, setIsOpen] = useState(false);
+  const dialogRef = useRef<HTMLDialogElement>(null);
+  const titleId = useId();
 
   const settingsUrl =
     `https://github.com/settings/installations/${githubInstallationId}`;
 
+  const closeDialog = () => {
+    dialogRef.current?.close();
+  };
+
   return (
-    <div className="relative">
+    <>
       <button
         type="button"
-        aria-expanded={isOpen}
-        onClick={() => setIsOpen((current) => !current)}
+        onClick={() => dialogRef.current?.showModal()}
         className={
           compact
             ? "inline-flex items-center justify-center gap-2 rounded-xl border border-rose-500/40 px-4 py-2 text-sm font-semibold text-rose-300 transition hover:border-rose-400 hover:bg-rose-500/10"
@@ -40,8 +47,25 @@ export function UnlinkRepositoryButton({
         このリポジトリの連携を解除
       </button>
 
-      {isOpen && (
-        <div className="absolute right-0 top-full z-20 mt-2 w-72 space-y-3 rounded-2xl border border-rose-500/30 bg-slate-900 p-4 text-left text-sm text-slate-300 shadow-xl">
+      <dialog
+        ref={dialogRef}
+        aria-labelledby={titleId}
+        // ダイアログの外側（背景）を押した時も閉じる
+        onClick={(event) => {
+          if (event.target === event.currentTarget) {
+            closeDialog();
+          }
+        }}
+        className="m-auto w-[min(24rem,calc(100%-2rem))] rounded-2xl border border-rose-500/30 bg-slate-900 p-0 text-left text-sm text-slate-300 shadow-2xl backdrop:bg-slate-950/70"
+      >
+        <div className="space-y-4 p-5">
+          <h2
+            id={titleId}
+            className="text-base font-bold text-white"
+          >
+            連携を解除する
+          </h2>
+
           <p className="leading-6">
             GitHubの設定画面で「
             <span className="break-all font-semibold text-white">
@@ -66,14 +90,14 @@ export function UnlinkRepositoryButton({
 
             <button
               type="button"
-              onClick={() => setIsOpen(false)}
+              onClick={closeDialog}
               className="rounded-xl border border-white/10 px-3 py-2 text-sm text-slate-300 transition hover:bg-white/5"
             >
               やめる
             </button>
           </div>
         </div>
-      )}
-    </div>
+      </dialog>
+    </>
   );
 }
