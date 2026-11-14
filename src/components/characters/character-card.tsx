@@ -8,19 +8,11 @@ import {
   getCharacterEvolution,
   getNextCharacterEvolution,
 } from "@/lib/characters/catalog";
+import { PERSONALITY_INFO } from "@/lib/characters/personality";
 import type { Character } from "@/types/character";
 
 type CharacterCardProps = {
   character: Character;
-};
-
-const personalityLabels: Record<
-  Character["personality"],
-  string
-> = {
-  cheerful: "元気",
-  calm: "冷静",
-  serious: "まじめ",
 };
 
 export function CharacterCard({
@@ -105,9 +97,9 @@ export function CharacterCard({
 
           <p className="mt-2 text-sm text-slate-500">
             性格：
-            {personalityLabels[
+            {PERSONALITY_INFO[
               character.personality
-            ]}
+            ].label}
           </p>
         </div>
 

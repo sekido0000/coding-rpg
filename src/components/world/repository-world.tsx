@@ -9,6 +9,7 @@ import {
   type CSSProperties,
 } from "react";
 
+import { useSpeeches } from "@/components/world/use-speeches";
 import { VillageScenery } from "@/components/world/village-scenery";
 import { getCharacterEvolution } from "@/lib/characters/catalog";
 import {
@@ -19,6 +20,7 @@ import {
   pickTarget,
   type Position,
 } from "@/lib/world/movement";
+import type { ActivitySummary } from "@/lib/world/activity";
 import type { Character } from "@/types/character";
 
 /*
@@ -34,6 +36,8 @@ const pixelFont = DotGothic16({
 
 type RepositoryWorldProps = {
   characters: Character[];
+  // キャラクターごとの最近の様子（セリフ選びに使う）
+  activity: Record<string, ActivitySummary>;
 };
 
 type Walker = {
@@ -66,16 +70,48 @@ function getInitialWalker(
   };
 }
 
+type SpeechBubbleProps = {
+  text: string;
+  // キャラクターの横の位置（%）．世界の端ではみ出さないよう，吹き出しの向きを変える
+  x: number;
+};
+
+function SpeechBubble({ text, x }: SpeechBubbleProps) {
+  const align =
+    x < 20
+      ? { bubble: "left-0", tail: "left-6" }
+      : x > 80
+        ? { bubble: "right-0", tail: "right-6" }
+        : {
+            bubble: "left-1/2 -translate-x-1/2",
+            tail: "left-1/2 -translate-x-1/2",
+          };
+
+  return (
+    <span
+      className={`pointer-events-none absolute bottom-full mb-2 w-max max-w-[11rem] rounded-xl bg-white px-3 py-1.5 text-left text-xs leading-5 text-slate-900 shadow-lg transition group-hover:opacity-0 group-focus-visible:opacity-0 sm:max-w-[14rem] sm:text-sm ${align.bubble}`}
+    >
+      {text}
+      <span
+        className={`absolute top-full border-x-[6px] border-t-[6px] border-x-transparent border-t-white ${align.tail}`}
+      />
+    </span>
+  );
+}
+
 /*
  * 自分のキャラクター全員が暮らす世界．
  * キャラクターは歩き回り，押すとそのキャラクターの詳細画面へ移る．
  */
 export function RepositoryWorld({
   characters,
+  activity,
 }: RepositoryWorldProps) {
   const [walkers, setWalkers] = useState<
     Record<string, Walker>
   >({});
+
+  const { speeches } = useSpeeches(characters, activity);
 
   const characterIds = characters
     .map((character) => character.id)
@@ -199,6 +235,8 @@ export function RepositoryWorld({
         const repositoryName =
           `${character.repositoryOwner}/${character.repositoryName}`;
 
+        const speech = speeches[character.id];
+
         return (
           <Link
             key={character.id}
@@ -210,10 +248,20 @@ export function RepositoryWorld({
                 left: `${walker.position.x}%`,
                 top: `${walker.position.y}%`,
                 transition: `left ${walker.duration}ms linear, top ${walker.duration}ms linear`,
-                "--depth": getDepth(walker.position),
+                // 話している時は，吹き出しが他のキャラクターに隠れないよう手前に出す
+                "--depth": speech
+                  ? 99
+                  : getDepth(walker.position),
               } as CSSProperties
             }
           >
+            {speech && (
+              <SpeechBubble
+                text={speech}
+                x={walker.position.x}
+              />
+            )}
+
             <span className="pointer-events-none absolute bottom-full left-1/2 mb-1 -translate-x-1/2 whitespace-nowrap rounded-lg border border-white/10 bg-slate-950/90 px-2.5 py-1.5 text-center text-xs text-white opacity-0 shadow-lg transition group-hover:opacity-100 group-focus-visible:opacity-100">
               <span className="block font-bold">
                 {character.name}

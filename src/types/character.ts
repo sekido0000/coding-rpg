@@ -1,3 +1,4 @@
+import type { CharacterPersonality } from "@/lib/characters/personality";
 import {
   CHARACTER_TYPES,
   type CharacterType,
@@ -6,10 +7,7 @@ import {
 export { CHARACTER_TYPES };
 export type { CharacterType };
 
-export type CharacterPersonality =
-  | "cheerful"
-  | "calm"
-  | "serious";
+export type { CharacterPersonality };
 
 export type Character = {
   id: string;

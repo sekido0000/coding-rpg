@@ -3,6 +3,7 @@ import { LandingPage } from "@/components/landing/landing-page";
 import { AppLogo } from "@/components/layout/app-logo";
 import { getCharacters } from "@/data/characters";
 import { getRepositoriesAwaitingCharacter } from "@/data/repositories";
+import { getWorldActivity } from "@/data/world-activity";
 import { signOutAction } from "@/app/actions/auth-actions";
 import { createClient } from "@/lib/supabase/server";
 import { SignOutButton } from "@/components/auth/sign-out-button";
@@ -26,9 +27,11 @@ export default async function Home() {
   const [
     characters,
     pendingRepositories,
+    worldActivity,
   ] = await Promise.all([
     getCharacters(),
     getRepositoriesAwaitingCharacter(),
+    getWorldActivity(),
   ]);
 
   const githubName =
@@ -106,6 +109,7 @@ export default async function Home() {
           pendingRepositories={
             pendingRepositories
           }
+          worldActivity={worldActivity}
         />
 
         <footer className="mt-auto border-t border-slate-800 pb-2 pt-10 text-center text-sm text-slate-600">

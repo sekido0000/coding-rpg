@@ -10,6 +10,7 @@ import {
   isCharacterType,
 } from "@/lib/characters/catalog";
 import { normalizeCharacterName } from "@/lib/characters/name";
+import { isCharacterPersonality } from "@/lib/characters/personality";
 
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -50,6 +51,15 @@ export async function createCharacterAction(
   if (!name) {
     throw new Error(
       "キャラクターの名前が不正です",
+    );
+  }
+
+  const personality =
+    formData.get("personality");
+
+  if (!isCharacterPersonality(personality)) {
+    throw new Error(
+      "キャラクターの性格が不正です",
     );
   }
 
@@ -123,7 +133,7 @@ export async function createCharacterAction(
       repository_id: repositoryId,
       name,
       character_type: characterType,
-      personality: "cheerful",
+      personality,
       level: 1,
       current_xp: 0,
       required_xp: 100,
