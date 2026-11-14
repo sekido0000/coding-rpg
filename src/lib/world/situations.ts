@@ -24,6 +24,8 @@ export const SITUATIONS = [
   "just_leveled",
   "final_form",
   "chitchat",
+  // push で経験値が入った瞬間だけに使う（getEligibleSituations では選ばない）
+  "gained_xp",
 ] as const;
 
 export type SituationId = (typeof SITUATIONS)[number];
@@ -39,6 +41,7 @@ export const SITUATION_SLOTS: Partial<
   busy_week: ["count"],
   quiet: ["days"],
   near_level_up: ["next"],
+  gained_xp: ["xp"],
 };
 
 export type SpeakerContext = {

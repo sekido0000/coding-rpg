@@ -9,6 +9,7 @@ import {
   type CSSProperties,
 } from "react";
 
+import { useGrowthReactions } from "@/components/world/use-growth-reactions";
 import { useSpeeches } from "@/components/world/use-speeches";
 import { VillageScenery } from "@/components/world/village-scenery";
 import { getCharacterEvolution } from "@/lib/characters/catalog";
@@ -111,7 +112,16 @@ export function RepositoryWorld({
     Record<string, Walker>
   >({});
 
-  const { speeches } = useSpeeches(characters, activity);
+  const { speeches, say } = useSpeeches(
+    characters,
+    activity,
+  );
+
+  const reactions = useGrowthReactions(
+    characters,
+    activity,
+    say,
+  );
 
   const characterIds = characters
     .map((character) => character.id)
@@ -236,6 +246,7 @@ export function RepositoryWorld({
           `${character.repositoryOwner}/${character.repositoryName}`;
 
         const speech = speeches[character.id];
+        const reaction = reactions[character.id];
 
         return (
           <Link
@@ -275,18 +286,36 @@ export function RepositoryWorld({
             </span>
 
             <span
-              className="repo-character-float block"
+              className="repo-character-float relative block"
               // 全員が同じ調子で揺れないよう，揺れ始めをずらす
               style={{
                 animationDelay: `${-index * 0.37}s`,
               }}
             >
+              {/* レベルが上がった時に，まわりを光らせる */}
+              {reaction?.isLevelUp && (
+                <span
+                  key={`glow-${reaction.key}`}
+                  className="world-level-up pointer-events-none absolute -inset-3 rounded-full bg-amber-300/60 blur-xl"
+                />
+              )}
+
+              {/* 経験値が入った時に，数字を浮かべる */}
+              {reaction && (
+                <span
+                  key={`xp-${reaction.key}`}
+                  className={`${pixelFont.className} world-xp-pop pointer-events-none absolute -top-1 right-0 z-10 translate-x-1/2 whitespace-nowrap text-sm text-amber-200 [text-shadow:1px_1px_0_#78350f,2px_2px_0_rgba(0,0,0,0.5)] sm:text-base`}
+                >
+                  +{reaction.xp} XP
+                </span>
+              )}
+
               <Image
                 src={evolution.imagePath}
                 alt=""
                 width={96}
                 height={96}
-                className={`repo-pixel-image block h-auto drop-shadow-[0_10px_8px_rgba(0,0,0,0.45)] ${
+                className={`repo-pixel-image relative block h-auto drop-shadow-[0_10px_8px_rgba(0,0,0,0.45)] ${
                   isCrowded
                     ? "w-14 sm:w-16"
                     : "w-20 sm:w-24"

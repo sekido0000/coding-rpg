@@ -7,6 +7,7 @@ import { SOLO_LINES } from "./lines/solo";
 import {
   getEligibleSituations,
   getSlotValues,
+  type SituationId,
   type SpeakerContext,
 } from "./situations";
 
@@ -63,18 +64,36 @@ type PickSoloLineParams = {
  * 今当てはまる場面から重みに応じて場面を選び，
  * その場面のセリフのうち，最近出していないものから選ぶ．
  */
-export function pickSoloLine({
+export function pickSoloLine(
+  params: PickSoloLineParams,
+): Line {
+  const situation = pickWeighted(
+    getEligibleSituations(params.context, params.now),
+    params.random,
+  ).id;
+
+  return pickLineForSituation({ ...params, situation });
+}
+
+type PickLineForSituationParams = PickSoloLineParams & {
+  situation: SituationId;
+  // 場面の決まった差し込み以外に入れる値（{xp} など）
+  extraSlots?: Record<string, string>;
+};
+
+/*
+ * 決まった場面のセリフを1つ選ぶ．
+ * 経験値が入った時やレベルが上がった時のように，場面が先に決まっている時に使う．
+ */
+export function pickLineForSituation({
   personality,
   context,
   now,
   random,
   recentIds,
-}: PickSoloLineParams): Line {
-  const situation = pickWeighted(
-    getEligibleSituations(context, now),
-    random,
-  ).id;
-
+  situation,
+  extraSlots = {},
+}: PickLineForSituationParams): Line {
   const candidates = SOLO_LINES[personality][situation].map(
     (template, index) => ({
       id: `${personality}:${situation}:${index}`,
@@ -92,9 +111,9 @@ export function pickSoloLine({
 
   return {
     id: chosen.id,
-    text: fillSlots(
-      chosen.template,
-      getSlotValues(situation, context, now),
-    ),
+    text: fillSlots(chosen.template, {
+      ...getSlotValues(situation, context, now),
+      ...extraSlots,
+    }),
   };
 }
