@@ -2,7 +2,7 @@
  * テスト用の偽のSupabaseクライアント．
  *
  * 表をメモリ上の配列で持ち，Webhookの処理で使う書き方
- * （select・insert・update・delete と eq・maybeSingle・single）だけを再現する．
+ * （select・insert・upsert・update・delete と eq・not・maybeSingle・single）だけを再現する．
  * 本物のDBにはつながない．
  */
 
@@ -21,6 +21,7 @@ type Result = {
 type Operation =
   | "select"
   | "insert"
+  | "upsert"
   | "update"
   | "delete";
 
@@ -42,7 +43,8 @@ class QueryBuilder
   implements PromiseLike<Result>
 {
   private operation: Operation = "select";
-  private filters: [string, unknown][] = [];
+  private filters: ((row: Row) => boolean)[] = [];
+  private conflictColumns: string[] = [];
   private values: Row | Row[] = {};
   private returnsRows = false;
 
@@ -66,6 +68,16 @@ class QueryBuilder
     return this;
   }
 
+  upsert(
+    values: Row | Row[],
+    { onConflict }: { onConflict: string },
+  ) {
+    this.operation = "upsert";
+    this.values = values;
+    this.conflictColumns = onConflict.split(",");
+    return this;
+  }
+
   update(values: Row) {
     this.operation = "update";
     this.values = values;
@@ -78,7 +90,26 @@ class QueryBuilder
   }
 
   eq(column: string, value: unknown) {
-    this.filters.push([column, value]);
+    this.filters.push((row) => row[column] === value);
+    return this;
+  }
+
+  // not(列, "in", "(1,2,3)") の形だけを扱う
+  not(column: string, operator: string, list: string) {
+    if (operator !== "in") {
+      throw new Error("not は in だけを扱う");
+    }
+
+    const values = list
+      .slice(1, -1)
+      .split(",")
+      .map((value) =>
+        Number.isNaN(Number(value)) ? value : Number(value),
+      );
+
+    this.filters.push(
+      (row) => !values.includes(row[column] as never),
+    );
     return this;
   }
 
@@ -126,9 +157,7 @@ class QueryBuilder
   }
 
   private matches(row: Row) {
-    return this.filters.every(
-      ([column, value]) => row[column] === value,
-    );
+    return this.filters.every((filter) => filter(row));
   }
 
   private run(): Result {
@@ -177,6 +206,28 @@ class QueryBuilder
           data: this.returnsRows ? newRows : null,
           error: null,
         };
+      }
+
+      case "upsert": {
+        const newRows = Array.isArray(this.values)
+          ? this.values
+          : [this.values];
+
+        for (const newRow of newRows) {
+          const existing = rows.find((row) =>
+            this.conflictColumns.every(
+              (column) => row[column] === newRow[column],
+            ),
+          );
+
+          if (existing) {
+            Object.assign(existing, newRow);
+          } else {
+            rows.push({ ...newRow });
+          }
+        }
+
+        return { data: null, error: null };
       }
 
       case "update": {

@@ -3,6 +3,7 @@ import type { User } from "@supabase/supabase-js";
 
 import { createGitHubApp } from "@/lib/github/app";
 import { verifyInstallState } from "@/lib/github/install-state";
+import { syncInstallationRepositories } from "@/lib/github/sync-repositories";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
@@ -86,10 +87,7 @@ export async function GET(
         "state",
       );
 
-    if (
-      !installationIdValue ||
-      !state
-    ) {
+    if (!installationIdValue) {
       throw new Error(
         "インストール情報が不足しています",
       );
@@ -124,16 +122,22 @@ export async function GET(
       );
     }
 
-    const statePayload =
-      verifyInstallState(state);
+    /*
+     * アプリのボタンから始めた時は，署名付きのstateが付く．
+     * GitHubの設定画面で直接リポジトリの選択を変えた時は，stateが付かない．
+     */
+    if (state) {
+      const statePayload =
+        verifyInstallState(state);
 
-    if (
-      !statePayload ||
-      statePayload.userId !== user.id
-    ) {
-      throw new Error(
-        "インストール状態を検証できません",
-      );
+      if (
+        !statePayload ||
+        statePayload.userId !== user.id
+      ) {
+        throw new Error(
+          "インストール状態を検証できません",
+        );
+      }
     }
 
     const githubUserId =
@@ -193,41 +197,47 @@ export async function GET(
       );
     }
 
-    const installationOctokit =
-      await app.getInstallationOctokit(
-        installationId,
-      );
-
-    const repositories =
-      await installationOctokit.paginate(
-        "GET /installation/repositories",
-        {
-          per_page: 100,
-        },
-      );
-    
-    const hasInvalidRepository =
-      repositories.some(
-        (repository) =>
-          !repository ||
-          typeof repository.id !== "number" ||
-          typeof repository.name !== "string" ||
-          typeof repository.full_name !== "string",
-      );
-
-    if (hasInvalidRepository) {
-      console.error(
-        "Invalid GitHub repository response:",
-        repositories,
-      );
-
-      throw new Error(
-        "GitHubから不正なリポジトリ情報が返されました",
-      );
-    }
-
     const adminClient =
       createAdminClient();
+
+    /*
+     * GitHubの設定画面から戻ってきた時（stateなし）は，
+     * すでに保存してある本人のインストールのリポジトリだけを同期する．
+     */
+    if (!state) {
+      const {
+        data: savedInstallation,
+        error: installationError,
+      } = await adminClient
+        .from("github_installations")
+        .select("id")
+        .eq(
+          "github_installation_id",
+          installationId,
+        )
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+      if (installationError) {
+        throw new Error(
+          `インストールの取得に失敗しました: ${installationError.message}`,
+        );
+      }
+
+      if (savedInstallation) {
+        await syncInstallationRepositories({
+          githubInstallationId:
+            installationId,
+          installationId:
+            savedInstallation.id,
+          userId: user.id,
+        });
+      }
+
+      return NextResponse.redirect(
+        new URL("/", request.url),
+      );
+    }
 
     const {
       data: savedInstallation,
@@ -271,86 +281,13 @@ export async function GET(
       );
     }
 
-    /*
-     * GitHub側で選択解除されたリポジトリを
-     * 一旦非アクティブにする．
-     */
-    const {
-      error: deactivateError,
-    } = await adminClient
-      .from("repositories")
-      .update({
-        is_active: false,
-        updated_at:
-          new Date().toISOString(),
-      })
-      .eq(
-        "github_installation_id",
+    await syncInstallationRepositories({
+      githubInstallationId:
+        installationId,
+      installationId:
         savedInstallation.id,
-      );
-
-    if (deactivateError) {
-      throw new Error(
-        `既存リポジトリの更新に失敗しました: ${deactivateError.message}`,
-      );
-    }
-
-    const repositoryRows =
-      repositories.map((repository) => ({
-        user_id: user.id,
-
-        github_installation_id:
-          savedInstallation.id,
-
-        github_repository_id:
-          repository.id,
-
-        owner:
-          repository.owner?.login ??
-          repository.full_name.split(
-            "/",
-          )[0],
-
-        name: repository.name,
-
-        default_branch:
-          repository.default_branch,
-
-        html_url:
-          repository.html_url,
-
-        is_private:
-          repository.private,
-
-        visibility:
-          repository.visibility ??
-          (repository.private
-            ? "private"
-            : "public"),
-
-        is_active: true,
-
-        updated_at:
-          new Date().toISOString(),
-      }));
-
-    if (repositoryRows.length > 0) {
-      const {
-        error: repositoryError,
-      } = await adminClient
-        .from("repositories")
-        .upsert(repositoryRows, {
-          onConflict:
-            "user_id,github_repository_id",
-        });
-
-      if (repositoryError) {
-        throw new Error(
-          `リポジトリの保存に失敗しました: ${repositoryError.message}`,
-        );
-      }
-
-    }
+      userId: user.id,
+    });
 
     return NextResponse.redirect(
       new URL(
