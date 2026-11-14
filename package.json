@@ -9,6 +9,7 @@
     "lint": "eslint",
     "typecheck": "next typegen && tsc --noEmit",
     "test": "vitest run",
+    "world:samples": "vitest run conversation-samples --mode samples",
     "generate:characters": "node scripts/generate-character-svgs.mjs"
   },
   "dependencies": {

@@ -89,6 +89,9 @@ export function useSpeeches(
   const speechesRef = useRef(speeches);
   const hideTimersRef = useRef(new Map<string, number>());
 
+  // 会話中のキャラクター．会話の途中で独り言を言わないようにする
+  const busyIdsRef = useRef(new Set<string>());
+
   useEffect(() => {
     charactersRef.current = characters;
     activityRef.current = activity;
@@ -134,7 +137,9 @@ export function useSpeeches(
     const speak = () => {
       const speaking = speechesRef.current;
       const candidates = charactersRef.current.filter(
-        (character) => !speaking[character.id],
+        (character) =>
+          !speaking[character.id] &&
+          !busyIdsRef.current.has(character.id),
       );
 
       // 別のタブを見ている間や，吹き出しが多い時は話さない
@@ -186,5 +191,26 @@ export function useSpeeches(
     };
   }, [say]);
 
-  return { speeches, say };
+  // 会話を始める・終える時に呼ぶ
+  const setBusy = useCallback(
+    (characterIds: string[], isBusy: boolean) => {
+      for (const id of characterIds) {
+        if (isBusy) {
+          busyIdsRef.current.add(id);
+        } else {
+          busyIdsRef.current.delete(id);
+        }
+      }
+    },
+    [],
+  );
+
+  const isSpeaking = useCallback(
+    (characterId: string) =>
+      !!speechesRef.current[characterId] ||
+      busyIdsRef.current.has(characterId),
+    [],
+  );
+
+  return { speeches, say, setBusy, isSpeaking };
 }
