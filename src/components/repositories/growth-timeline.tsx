@@ -131,9 +131,15 @@ export function GrowthTimeline({
 
 
                 <p className="mt-2 text-xs text-slate-600">
+                  {/*
+                   * 言語とタイムゾーンを固定し，サーバー（Vercel）と
+                   * ブラウザで同じ文字になるようにする．
+                   */}
                   {new Date(
                     event.created_at,
-                  ).toLocaleString()}
+                  ).toLocaleString("ja-JP", {
+                    timeZone: "Asia/Tokyo",
+                  })}
                 </p>
               </div>
             </article>
