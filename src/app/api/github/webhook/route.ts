@@ -47,6 +47,38 @@ function verifySignature(
 }
 
 /*
+ * 受信記録を残す日数．
+ * GitHubの画面から再送できるのは過去数日分の通知だけなので，
+ * それより古い記録は二重処理の防止に使われない．余裕を見て7日にする．
+ */
+const DELIVERY_RETENTION_DAYS = 7;
+
+/*
+ * 古い受信記録を消す．
+ * 失敗しても通知の処理には影響しないので，ログだけ残す．
+ */
+async function deleteOldDeliveries() {
+  const supabase = createAdminClient();
+
+  const threshold = new Date(
+    Date.now() -
+      DELIVERY_RETENTION_DAYS * 24 * 60 * 60 * 1000,
+  ).toISOString();
+
+  const { error } = await supabase
+    .from("webhook_deliveries")
+    .delete()
+    .lt("received_at", threshold);
+
+  if (error) {
+    console.error(
+      "Failed to delete old webhook deliveries",
+      error,
+    );
+  }
+}
+
+/*
  * 通知のIDを記録する．
  * すでに記録済み（GitHubからの再送）の時はfalseを返す．
  */
@@ -64,6 +96,7 @@ async function recordDelivery(
     });
 
   if (!error) {
+    await deleteOldDeliveries();
     return true;
   }
 

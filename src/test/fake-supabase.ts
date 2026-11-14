@@ -2,7 +2,8 @@
  * テスト用の偽のSupabaseクライアント．
  *
  * 表をメモリ上の配列で持ち，Webhookの処理で使う書き方
- * （select・insert・upsert・update・delete と eq・not・maybeSingle・single）だけを再現する．
+ * （select・insert・upsert・update・delete と eq・lt・not・maybeSingle・single，
+ * それに DB の関数 apply_commit_growth）だけを再現する．
  * 本物のDBにはつながない．
  */
 
@@ -22,6 +23,7 @@ type Operation =
   | "select"
   | "insert"
   | "upsert"
+  | "rpc"
   | "update"
   | "delete";
 
@@ -91,6 +93,16 @@ class QueryBuilder
 
   eq(column: string, value: unknown) {
     this.filters.push((row) => row[column] === value);
+    return this;
+  }
+
+  // 日時の列を，指定した日時より前かで絞り込む
+  lt(column: string, value: string) {
+    this.filters.push(
+      (row) =>
+        typeof row[column] === "string" &&
+        new Date(row[column] as string) < new Date(value),
+    );
     return this;
   }
 
@@ -256,6 +268,10 @@ class QueryBuilder
 
         return { data: null, error: null };
       }
+
+      // DBの関数は from ではなく rpc で呼ぶ
+      case "rpc":
+        throw new Error("rpc は FakeSupabase.rpc で呼ぶ");
     }
   }
 }
@@ -281,6 +297,64 @@ export class FakeSupabase {
 
   from(table: string) {
     return new QueryBuilder(this, table);
+  }
+
+  /*
+   * DBの関数を呼ぶ．Webhookの処理で使う関数だけを再現する．
+   */
+  async rpc(name: string, args: Row): Promise<Result> {
+    const failure = this.takeFailure(name, "rpc");
+
+    if (failure) {
+      return { data: null, error: failure };
+    }
+
+    if (name !== "apply_commit_growth") {
+      return {
+        data: null,
+        error: { message: `unknown function: ${name}` },
+      };
+    }
+
+    return {
+      data: this.applyCommitGrowth(args),
+      error: null,
+    };
+  }
+
+  // supabase/migrations/20261115_add_apply_commit_growth.sql と同じ動きをする
+  private applyCommitGrowth(args: Row) {
+    const characters = this.rows("characters");
+
+    this.beforeUpdate?.("characters", characters);
+
+    const character = characters.find(
+      (row) =>
+        row.id === args.p_character_id &&
+        row.level === args.p_expected_level &&
+        row.current_xp === args.p_expected_current_xp,
+    );
+
+    if (!character) {
+      return false;
+    }
+
+    Object.assign(character, {
+      level: args.p_level,
+      current_xp: args.p_current_xp,
+      required_xp: args.p_required_xp,
+      image_path: args.p_image_path,
+      latest_activity: args.p_latest_activity,
+    });
+
+    this.rows("growth_events").push(
+      ...(args.p_events as Row[]).map((event) => ({
+        ...event,
+        character_id: args.p_character_id,
+      })),
+    );
+
+    return true;
   }
 
   rows(table: string) {
