@@ -1,0 +1,365 @@
+import crypto from "crypto";
+import type { NextRequest } from "next/server";
+import {
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from "vitest";
+
+import type { ChangedFile } from "@/lib/growth/xp";
+import {
+  FakeSupabase,
+  type Row,
+} from "@/test/fake-supabase";
+
+/*
+ * Webhookを受けてから経験値が入るまでを，まとめて確かめる．
+ * DBは偽物（FakeSupabase）に，GitHub APIは決まった差分を返す偽物に差し替える．
+ */
+
+const mocks = vi.hoisted(() => ({
+  db: null as unknown,
+  commitFiles: new Map<string, unknown>(),
+}));
+
+vi.mock("@/lib/supabase/admin", () => ({
+  createAdminClient: () => mocks.db,
+}));
+
+vi.mock("@/lib/github/commits", () => ({
+  getCommitFiles: async () => mocks.commitFiles,
+}));
+
+const { POST } = await import("./route");
+
+const SECRET = "test-webhook-secret";
+
+// 1件で feat 20 XP + 変更量ボーナス 2 XP = 22 XP になるコミット
+const FEAT_COMMIT = {
+  id: "sha-feat",
+  message: "feat: ログイン画面を追加",
+  timestamp: "2026-11-14T03:00:00Z",
+  distinct: true,
+};
+
+const FEAT_FILES: ChangedFile[] = [
+  {
+    filename: "src/login.ts",
+    status: "added",
+    additions: 1,
+    deletions: 0,
+    patch: "+export const login = () => {};",
+  },
+];
+
+const FEAT_XP = 22;
+
+let db: FakeSupabase;
+
+function seed(character: Partial<Row> = {}) {
+  db = new FakeSupabase({
+    github_installations: [
+      { id: "installation-1", github_installation_id: 1 },
+    ],
+    repositories: [
+      {
+        id: "repository-1",
+        github_installation_id: "installation-1",
+        github_repository_id: 100,
+        name: "demo",
+        is_active: true,
+      },
+    ],
+    characters: [
+      {
+        id: "character-1",
+        repository_id: "repository-1",
+        character_type: "sprout",
+        level: 1,
+        current_xp: 0,
+        required_xp: 100,
+        ...character,
+      },
+    ],
+  });
+
+  mocks.db = db;
+}
+
+function pushPayload(overrides: Row = {}) {
+  return {
+    repository: {
+      id: 100,
+      name: "demo",
+      owner: { login: "octocat" },
+    },
+    installation: { id: 1 },
+    forced: false,
+    commits: [FEAT_COMMIT],
+    ...overrides,
+  };
+}
+
+function sign(body: string) {
+  return (
+    "sha256=" +
+    crypto
+      .createHmac("sha256", SECRET)
+      .update(body)
+      .digest("hex")
+  );
+}
+
+function webhookRequest(
+  payload: unknown,
+  {
+    event = "push",
+    deliveryId = "delivery-1",
+    signature,
+  }: {
+    event?: string;
+    deliveryId?: string;
+    signature?: string | null;
+  } = {},
+) {
+  const body = JSON.stringify(payload);
+  const headers = new Headers({
+    "x-github-event": event,
+    "x-github-delivery": deliveryId,
+  });
+
+  const value =
+    signature === undefined ? sign(body) : signature;
+
+  if (value !== null) {
+    headers.set("x-hub-signature-256", value);
+  }
+
+  return new Request(
+    "http://localhost/api/github/webhook",
+    { method: "POST", headers, body },
+  ) as unknown as NextRequest;
+}
+
+function character() {
+  return db.rows("characters")[0];
+}
+
+beforeEach(() => {
+  process.env.GITHUB_WEBHOOK_SECRET = SECRET;
+  mocks.commitFiles = new Map([
+    [FEAT_COMMIT.id, FEAT_FILES],
+  ]);
+  seed();
+
+  // 処理中のログでテストの出力が埋まらないようにする
+  vi.spyOn(console, "log").mockImplementation(() => {});
+  vi.spyOn(console, "error").mockImplementation(() => {});
+});
+
+afterEach(() => {
+  vi.restoreAllMocks();
+});
+
+describe("署名の検証", () => {
+  it("署名がない通知は401で，何も処理しない", async () => {
+    const response = await POST(
+      webhookRequest(pushPayload(), { signature: null }),
+    );
+
+    expect(response.status).toBe(401);
+    expect(character().current_xp).toBe(0);
+    expect(db.rows("webhook_deliveries")).toHaveLength(0);
+  });
+
+  it("署名が違う通知は401で，何も処理しない", async () => {
+    const response = await POST(
+      webhookRequest(pushPayload(), {
+        signature: sign("別の内容"),
+      }),
+    );
+
+    expect(response.status).toBe(401);
+    expect(character().current_xp).toBe(0);
+  });
+
+  it("長さの違う署名でも500にならず401を返す", async () => {
+    const response = await POST(
+      webhookRequest(pushPayload(), {
+        signature: "sha256=short",
+      }),
+    );
+
+    expect(response.status).toBe(401);
+  });
+});
+
+describe("経験値の加算", () => {
+  it("pushで経験値が入り，成長履歴と受信記録が残る", async () => {
+    const response = await POST(
+      webhookRequest(pushPayload()),
+    );
+
+    expect(response.status).toBe(200);
+    expect(character().current_xp).toBe(FEAT_XP);
+
+    expect(db.rows("growth_events")).toEqual([
+      expect.objectContaining({
+        character_id: "character-1",
+        event_type: "commit_feat",
+        xp: FEAT_XP,
+        created_at: FEAT_COMMIT.timestamp,
+      }),
+    ]);
+
+    expect(db.rows("webhook_deliveries")).toEqual([
+      expect.objectContaining({
+        delivery_id: "delivery-1",
+      }),
+    ]);
+  });
+
+  it("同じ通知が再送されても，経験値は二重に入らない", async () => {
+    await POST(webhookRequest(pushPayload()));
+    const response = await POST(
+      webhookRequest(pushPayload()),
+    );
+
+    expect(response.status).toBe(200);
+    expect(character().current_xp).toBe(FEAT_XP);
+    expect(db.rows("growth_events")).toHaveLength(1);
+  });
+
+  it("必要な経験値に届くとレベルが上がり，レベルアップの履歴も残る", async () => {
+    seed({ current_xp: 90 });
+
+    await POST(webhookRequest(pushPayload()));
+
+    expect(character()).toMatchObject({
+      level: 2,
+      current_xp: 90 + FEAT_XP - 100,
+      required_xp: 200,
+    });
+
+    expect(
+      db
+        .rows("growth_events")
+        .map((event) => event.event_type),
+    ).toEqual(["commit_feat", "level_up"]);
+  });
+});
+
+describe("経験値を付けない通知", () => {
+  it("force pushでは経験値が入らない", async () => {
+    const response = await POST(
+      webhookRequest(pushPayload({ forced: true })),
+    );
+
+    expect(response.status).toBe(200);
+    expect(character().current_xp).toBe(0);
+  });
+
+  it("別のpushですでに届いたコミット（distinct: false）は数えない", async () => {
+    await POST(
+      webhookRequest(
+        pushPayload({
+          commits: [{ ...FEAT_COMMIT, distinct: false }],
+        }),
+      ),
+    );
+
+    expect(character().current_xp).toBe(0);
+  });
+
+  it("連携を解除したリポジトリには経験値が入らない", async () => {
+    db.rows("repositories")[0].is_active = false;
+
+    await POST(webhookRequest(pushPayload()));
+
+    expect(character().current_xp).toBe(0);
+  });
+});
+
+describe("同時に届いた通知との競合", () => {
+  it("先に別の通知が更新していたら，読み直して正しい値で更新する", async () => {
+    let isFirstUpdate = true;
+
+    // 1回目の更新の直前に，別の通知が10 XP加えたことにする
+    db.beforeUpdate = (table, rows) => {
+      if (table === "characters" && isFirstUpdate) {
+        isFirstUpdate = false;
+        rows[0].current_xp = 10;
+      }
+    };
+
+    const response = await POST(
+      webhookRequest(pushPayload()),
+    );
+
+    expect(response.status).toBe(200);
+    expect(character().current_xp).toBe(10 + FEAT_XP);
+  });
+
+  it("何度やり直しても競合する時は失敗にし，再送でやり直せるよう受信記録を消す", async () => {
+    // 更新の直前に毎回，別の通知が1 XP加えたことにする
+    db.beforeUpdate = (table, rows) => {
+      if (table === "characters") {
+        rows[0].current_xp =
+          (rows[0].current_xp as number) + 1;
+      }
+    };
+
+    await expect(
+      POST(webhookRequest(pushPayload())),
+    ).rejects.toThrow("conflicted too many times");
+
+    expect(db.rows("webhook_deliveries")).toHaveLength(0);
+    expect(db.rows("growth_events")).toHaveLength(0);
+  });
+});
+
+describe("処理の途中での失敗", () => {
+  it("キャラクターの更新に失敗したら，受信記録を消して再送でやり直せる", async () => {
+    db.failNext("characters", "update");
+
+    await expect(
+      POST(webhookRequest(pushPayload())),
+    ).rejects.toThrow("Failed to update character");
+
+    expect(character().current_xp).toBe(0);
+    expect(db.rows("webhook_deliveries")).toHaveLength(0);
+
+    // 再送されると，今度は経験値が入る
+    const response = await POST(
+      webhookRequest(pushPayload()),
+    );
+
+    expect(response.status).toBe(200);
+    expect(character().current_xp).toBe(FEAT_XP);
+  });
+
+  it("連携情報の取得に失敗したら，受信記録を消す", async () => {
+    db.failNext("github_installations", "select");
+
+    await expect(
+      POST(webhookRequest(pushPayload())),
+    ).rejects.toThrow("Failed to fetch GitHub installation");
+
+    expect(db.rows("webhook_deliveries")).toHaveLength(0);
+  });
+
+  it("成長履歴の書き込みだけ失敗した時は，経験値が二重に入らないよう成功として扱う", async () => {
+    db.failNext("growth_events", "insert");
+
+    const response = await POST(
+      webhookRequest(pushPayload()),
+    );
+
+    expect(response.status).toBe(200);
+    expect(character().current_xp).toBe(FEAT_XP);
+    expect(db.rows("webhook_deliveries")).toHaveLength(1);
+  });
+});

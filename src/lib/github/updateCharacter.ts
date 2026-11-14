@@ -30,6 +30,11 @@ type CharacterRow = {
   required_xp: number;
 };
 
+/*
+ * キャラクターを取得する．
+ * まだ作られていない時はnull，取得自体に失敗した時は例外を投げる
+ * （例外にすると，GitHubからの再送でやり直せる）．
+ */
 async function fetchCharacter(
   supabase: SupabaseAdminClient,
   repositoryId: string,
@@ -42,11 +47,13 @@ async function fetchCharacter(
     .eq("repository_id", repositoryId)
     .maybeSingle();
 
-  if (error || !data) {
-    console.error(
-      "Character not found",
-      error,
+  if (error) {
+    throw new Error(
+      `Failed to fetch character: ${error.message}`,
     );
+  }
+
+  if (!data) {
     return null;
   }
 
@@ -156,6 +163,13 @@ async function getChangedFiles(
   );
 }
 
+/*
+ * pushの通知を受けて，キャラクターに経験値を加える．
+ *
+ * 経験値を付けなくてよい時（force push，連携していないリポジトリなど）は
+ * そのまま終わる．DBの読み書きに失敗した時は例外を投げ，
+ * Webhookの受信記録を消して，GitHubからの再送でやり直せるようにする．
+ */
 export async function updateCharacter(
   payload: PushWebhookPayload,
 ) {
@@ -201,10 +215,15 @@ export async function updateCharacter(
     )
     .maybeSingle();
 
-  if (installationError || !installation) {
+  if (installationError) {
+    throw new Error(
+      `Failed to fetch GitHub installation: ${installationError.message}`,
+    );
+  }
+
+  if (!installation) {
     console.error(
       "GitHub installation not found",
-      installationError,
     );
     return;
   }
@@ -232,11 +251,9 @@ export async function updateCharacter(
     .maybeSingle();
 
   if (repositoryError) {
-    console.error(
-      "Failed to fetch repository",
-      repositoryError,
+    throw new Error(
+      `Failed to fetch repository: ${repositoryError.message}`,
     );
-    return;
   }
 
   if (!repository) {
@@ -332,11 +349,9 @@ export async function updateCharacter(
       .maybeSingle();
 
     if (updateError) {
-      console.error(
-        "Character update failed:",
-        updateError,
+      throw new Error(
+        `Failed to update character: ${updateError.message}`,
       );
-      return;
     }
 
     if (updated) {
@@ -351,11 +366,15 @@ export async function updateCharacter(
     );
   }
 
-  if (!character || !growth) {
-    console.error(
+  // 読み直している間にキャラクターが消えた時は，加える先がないので終わる
+  if (!character) {
+    return;
+  }
+
+  if (!growth) {
+    throw new Error(
       "Character update conflicted too many times",
     );
-    return;
   }
 
   const updatedCharacter = character;
@@ -404,6 +423,11 @@ export async function updateCharacter(
       ...levelUpEvents,
     ]);
 
+  /*
+   * キャラクターの経験値はすでに加えているので，ここでは例外を投げない．
+   * 例外にすると再送で経験値がもう一度加わってしまうため，
+   * 履歴が欠ける方を選ぶ．
+   */
   if (eventError) {
     console.error(
       "Growth event insert failed:",
