@@ -10,6 +10,7 @@ import { createCharacterAction } from "@/app/actions/character-actions";
 import {
   CHARACTER_CATALOG,
 } from "@/lib/characters/catalog";
+import { CHARACTER_NAME_MAX_LENGTH } from "@/lib/characters/name";
 import {
   CHARACTER_TYPES,
   type CharacterType,
@@ -135,6 +136,28 @@ export function CharacterSetupForm({
             </p>
             <p className="mt-1 text-sm leading-6 text-slate-400">
               {definition.description}
+            </p>
+          </div>
+
+          <div>
+            <label
+              htmlFor={`character-name-${repositoryId}`}
+              className="text-sm font-medium text-slate-300"
+            >
+              名前
+            </label>
+            <input
+              id={`character-name-${repositoryId}`}
+              name="name"
+              type="text"
+              required
+              maxLength={CHARACTER_NAME_MAX_LENGTH}
+              autoComplete="off"
+              placeholder="例：ポチ"
+              className="mt-2 w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none transition placeholder:text-slate-600 focus:border-emerald-400"
+            />
+            <p className="mt-1.5 text-xs text-slate-500">
+              {CHARACTER_NAME_MAX_LENGTH}文字まで．あとから変えることはできません．
             </p>
           </div>
 
