@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 
-import { RepositoryWorld } from "@/components/repositories/repository-world";
+import { CharacterDetail } from "@/components/repositories/character-detail";
 import { getCharacterByRepositoryId } from "@/data/characters";
 import { getGrowthEvents } from "@/lib/growth/events";
 
@@ -18,7 +18,7 @@ export default async function RepositoryPage({
   );
 
   return (
-    <RepositoryWorld
+    <CharacterDetail
       character={character}
       growthEvents={growthEvents}
     />

@@ -5,6 +5,7 @@ import type { RealtimeChannel } from "@supabase/supabase-js";
 import { PendingLink } from "@/components/ui/pending-link";
 import { CharacterCard } from "@/components/characters/character-card";
 import { CharacterSetupForm } from "@/components/characters/character-setup-form";
+import { RepositoryWorld } from "@/components/world/repository-world";
 import type { RepositoryAwaitingCharacter } from "@/data/repositories";
 import type { Character } from "@/types/character";
 import { createClient } from "@/lib/supabase/client";
@@ -107,6 +108,10 @@ export function CharacterDashboard({
 
   return (
     <section>
+      {characters.length > 0 && (
+        <RepositoryWorld characters={characters} />
+      )}
+
       <div className="mb-5">
         <h2 className="text-2xl font-bold text-white">
           あなたのリポジトリ
