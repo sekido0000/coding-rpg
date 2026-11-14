@@ -7,19 +7,24 @@ import { CharacterCard } from "@/components/characters/character-card";
 import { CharacterSetupForm } from "@/components/characters/character-setup-form";
 import { RepositoryWorld } from "@/components/world/repository-world";
 import type { RepositoryAwaitingCharacter } from "@/data/repositories";
-import type { Character } from "@/types/character";
+import type { ActivitySummary } from "@/lib/world/activity";
+import type {
+  Character,
+  CharacterPersonality,
+} from "@/types/character";
 import { createClient } from "@/lib/supabase/client";
 
 type CharacterDashboardProps = {
   characters: Character[];
   pendingRepositories: RepositoryAwaitingCharacter[];
+  worldActivity: Record<string, ActivitySummary>;
 };
 
 type CharacterRealtimeRecord = {
   id: string;
   repository_id: string;
   name: string;
-  personality: "cheerful" | "calm" | "serious";
+  personality: CharacterPersonality;
   character_type: Character["characterType"];
   level: number;
   current_xp: number;
@@ -30,6 +35,7 @@ type CharacterRealtimeRecord = {
 export function CharacterDashboard({
   characters: initialCharacters,
   pendingRepositories,
+  worldActivity,
 }: CharacterDashboardProps) {
   const [characters, setCharacters] =
     useState<Character[]>(initialCharacters);
@@ -109,7 +115,10 @@ export function CharacterDashboard({
   return (
     <section>
       {characters.length > 0 && (
-        <RepositoryWorld characters={characters} />
+        <RepositoryWorld
+          characters={characters}
+          activity={worldActivity}
+        />
       )}
 
       <div className="mb-5">
