@@ -23,6 +23,8 @@ import {
 const mocks = vi.hoisted(() => ({
   db: null as unknown,
   commitFiles: new Map<string, unknown>(),
+  // GitHub APIに差分を取りに行ったコミット
+  fetchedShas: [] as string[],
   // GitHubで今選ばれているリポジトリ
   installationRepositories: [] as unknown[],
 }));
@@ -32,7 +34,10 @@ vi.mock("@/lib/supabase/admin", () => ({
 }));
 
 vi.mock("@/lib/github/commits", () => ({
-  getCommitFiles: async () => mocks.commitFiles,
+  getCommitFiles: async ({ shas }: { shas: string[] }) => {
+    mocks.fetchedShas.push(...shas);
+    return mocks.commitFiles;
+  },
 }));
 
 vi.mock("@/lib/github/installation-repositories", () => ({
@@ -93,6 +98,8 @@ function seed(character: Partial<Row> = {}) {
         level: 1,
         current_xp: 0,
         required_xp: 100,
+        // FEAT_COMMIT より前に誕生している
+        created_at: "2026-11-01T00:00:00Z",
         ...character,
       },
     ],
@@ -166,6 +173,7 @@ beforeEach(() => {
     [FEAT_COMMIT.id, FEAT_FILES],
   ]);
   mocks.installationRepositories = [];
+  mocks.fetchedShas = [];
   seed();
 
   // 処理中のログでテストの出力が埋まらないようにする
@@ -461,5 +469,98 @@ describe("GitHubの設定画面でのリポジトリの追加・削除", () => {
 
     expect(response.status).toBe(200);
     expect(repository(300)).toBeUndefined();
+  });
+});
+
+describe("古い受信記録の削除", () => {
+  it("通知を記録する時に，7日より古い受信記録を消す", async () => {
+    const daysAgo = (days: number) =>
+      new Date(
+        Date.now() - days * 24 * 60 * 60 * 1000,
+      ).toISOString();
+
+    db.rows("webhook_deliveries").push(
+      {
+        delivery_id: "old",
+        event: "push",
+        received_at: daysAgo(8),
+      },
+      {
+        delivery_id: "recent",
+        event: "push",
+        received_at: daysAgo(6),
+      },
+    );
+
+    await POST(webhookRequest(pushPayload()));
+
+    expect(
+      db
+        .rows("webhook_deliveries")
+        .map((row) => row.delivery_id),
+    ).toEqual(["recent", "delivery-1"]);
+  });
+});
+
+describe("過去の履歴や大量のコミットのpush", () => {
+  it("キャラクターが誕生する前のコミットには経験値を付けず，差分も取りに行かない", async () => {
+    const response = await POST(
+      webhookRequest(
+        pushPayload({
+          commits: [
+            {
+              ...FEAT_COMMIT,
+              timestamp: "2026-10-01T00:00:00Z",
+            },
+          ],
+        }),
+      ),
+    );
+
+    expect(response.status).toBe(200);
+    expect(character().current_xp).toBe(0);
+    expect(mocks.fetchedShas).toEqual([]);
+  });
+
+  it("誕生の前と後のコミットが混ざっている時は，後のコミットだけを数える", async () => {
+    await POST(
+      webhookRequest(
+        pushPayload({
+          commits: [
+            {
+              ...FEAT_COMMIT,
+              id: "sha-old",
+              timestamp: "2026-10-01T00:00:00Z",
+            },
+            FEAT_COMMIT,
+          ],
+        }),
+      ),
+    );
+
+    expect(character().current_xp).toBe(FEAT_XP);
+    expect(mocks.fetchedShas).toEqual([FEAT_COMMIT.id]);
+  });
+
+  it("差分を取りに行くのは50件までで，残りは通知のファイル一覧で数える", async () => {
+    const commits = Array.from(
+      { length: 60 },
+      (_, index) => ({
+        id: `sha-${index}`,
+        message: `feat: 画面${index}を追加`,
+        timestamp: "2026-11-14T03:00:00Z",
+        distinct: true,
+        added: [`src/screen-${index}.ts`],
+      }),
+    );
+
+    await POST(webhookRequest(pushPayload({ commits })));
+
+    expect(mocks.fetchedShas).toHaveLength(50);
+    expect(
+      db
+        .rows("growth_events")
+        .filter((event) => event.event_type === "commit_feat"),
+    ).toHaveLength(60);
   });
 });

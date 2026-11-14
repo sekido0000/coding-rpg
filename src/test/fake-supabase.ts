@@ -94,6 +94,16 @@ class QueryBuilder
     return this;
   }
 
+  // 日時の列を，指定した日時より前かで絞り込む
+  lt(column: string, value: string) {
+    this.filters.push(
+      (row) =>
+        typeof row[column] === "string" &&
+        new Date(row[column] as string) < new Date(value),
+    );
+    return this;
+  }
+
   // not(列, "in", "(1,2,3)") の形だけを扱う
   not(column: string, operator: string, list: string) {
     if (operator !== "in") {
