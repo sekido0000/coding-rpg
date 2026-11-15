@@ -2,7 +2,10 @@ import "server-only";
 
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
-import { grantTitles } from "@/lib/titles/grant-titles";
+import {
+  getTitleStats,
+  saveEarnedTitles,
+} from "@/lib/titles/grant-titles";
 import {
   findTitle,
   type TitleInfo,
@@ -37,9 +40,13 @@ export async function getTitleBoard(): Promise<TitleBoard> {
     throw new Error("ログインが必要です");
   }
 
-  const stats = await grantTitles(createAdminClient(), user.id);
-
-  const [titles, profile] = await Promise.all([
+  /*
+   * 合計・持っている称号・選んでいる称号を同時に取る（待ち時間を短くするため）．
+   * 新しく届いた称号がある時だけ書き込む．
+   */
+  const admin = createAdminClient();
+  const [stats, titles, profile] = await Promise.all([
+    getTitleStats(admin, user.id),
     supabase.from("user_titles").select("title_id, earned_at"),
     supabase
       .from("user_profiles")
@@ -55,16 +62,30 @@ export async function getTitleBoard(): Promise<TitleBoard> {
     }
   }
 
-  const newSince = Date.now() - NEW_DAYS * 24 * 60 * 60 * 1000;
+  const earnedAt: Record<string, string> = Object.fromEntries(
+    (titles.data ?? []).map((row) => [row.title_id, row.earned_at]),
+  );
+
+  const now = new Date();
+  const savedIds = await saveEarnedTitles(
+    admin,
+    user.id,
+    stats,
+    new Set(Object.keys(earnedAt)),
+  );
+
+  for (const titleId of savedIds) {
+    earnedAt[titleId] = now.toISOString();
+  }
+
+  const newSince = now.getTime() - NEW_DAYS * 24 * 60 * 60 * 1000;
 
   return {
     stats,
-    earnedAt: Object.fromEntries(
-      (titles.data ?? []).map((row) => [row.title_id, row.earned_at]),
-    ),
-    newTitleIds: (titles.data ?? [])
-      .filter((row) => Date.parse(row.earned_at) >= newSince)
-      .map((row) => row.title_id),
+    earnedAt,
+    newTitleIds: Object.entries(earnedAt)
+      .filter(([, at]) => Date.parse(at) >= newSince)
+      .map(([titleId]) => titleId),
     selectedTitleId: profile.data?.selected_title ?? null,
   };
 }
