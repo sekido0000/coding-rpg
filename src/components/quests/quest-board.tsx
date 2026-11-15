@@ -42,7 +42,14 @@ function Stamp({ kind }: { kind: "done" | "failed" }) {
   );
 }
 
-function QuestRow({ item }: { item: QuestBoardItem }) {
+function QuestRow({
+  item,
+  streak,
+}: {
+  item: QuestBoardItem;
+  // 毎回クエストの連続記録（ほかのクエストでは undefined）
+  streak?: number;
+}) {
   const {
     quest,
     value,
@@ -101,6 +108,19 @@ function QuestRow({ item }: { item: QuestBoardItem }) {
           <p className="mt-0.5 text-xs leading-5 text-slate-400">
             {quest.description}
           </p>
+
+          {/* 毎回クエストは，何週続けて達成しているかも出す */}
+          {streak !== undefined && (
+            <p
+              className={`mt-1 text-xs font-bold ${
+                streak > 0 ? "text-orange-300" : "text-slate-500"
+              }`}
+            >
+              {streak > 0
+                ? `🔥 ${streak}週連続で達成中`
+                : "連続記録はまだありません"}
+            </p>
+          )}
         </div>
 
         {/* 段階（★）．達成した数だけ色を付ける */}
@@ -186,6 +206,13 @@ export function QuestBoard({ board }: QuestBoardProps) {
           </p>
 
           <PendingLink
+            href="/titles"
+            className="rounded-full border border-slate-600 px-3 py-1 text-sm font-bold text-slate-200 transition hover:border-slate-400 hover:text-white"
+          >
+            🏅 称号
+          </PendingLink>
+
+          <PendingLink
             href="/shop"
             className="rounded-full bg-amber-300 px-3 py-1 text-sm font-bold text-slate-950 transition hover:bg-amber-200"
           >
@@ -196,7 +223,15 @@ export function QuestBoard({ board }: QuestBoardProps) {
 
       <ul className="grid gap-3 sm:grid-cols-2">
         {board.progress.map((item) => (
-          <QuestRow key={item.quest.id} item={item} />
+          <QuestRow
+            key={item.quest.id}
+            item={item}
+            streak={
+              item.quest.id === "every_time"
+                ? board.everyTimeStreak
+                : undefined
+            }
+          />
         ))}
       </ul>
     </section>

@@ -6,6 +6,8 @@ import { getRepositoriesAwaitingCharacter } from "@/data/repositories";
 import { getWorldActivity } from "@/data/world-activity";
 import { getWeeklyQuestBoard } from "@/data/quests";
 import { QuestBoard } from "@/components/quests/quest-board";
+import { TitleBadge } from "@/components/titles/title-badge";
+import { getSelectedTitle } from "@/data/titles";
 import { signOutAction } from "@/app/actions/auth-actions";
 import { createClient } from "@/lib/supabase/server";
 import { SignOutButton } from "@/components/auth/sign-out-button";
@@ -31,11 +33,13 @@ export default async function Home() {
     pendingRepositories,
     worldActivity,
     questBoard,
+    selectedTitle,
   ] = await Promise.all([
     getCharacters(),
     getRepositoriesAwaitingCharacter(),
     getWorldActivity(),
     getWeeklyQuestBoard(),
+    getSelectedTitle(),
   ]);
 
   const githubName =
@@ -85,6 +89,28 @@ export default async function Home() {
 
             <div className="flex items-center gap-3 rounded-xl border border-slate-700 bg-slate-900/70 py-1.5 pl-3 pr-1.5">
               <div className="min-w-0">
+                {/* 選んでいる称号．押すと称号の一覧へ */}
+                <PendingLink
+                  href="/titles"
+                  aria-label={
+                    selectedTitle
+                      ? `称号：${selectedTitle.name}（称号の一覧へ）`
+                      : "称号の一覧へ"
+                  }
+                  className="mb-1 block"
+                >
+                  {selectedTitle ? (
+                    <TitleBadge
+                      name={selectedTitle.name}
+                      rank={selectedTitle.rank}
+                      size="sm"
+                    />
+                  ) : (
+                    <span className="text-[11px] text-amber-200/80 hover:text-amber-100">
+                      🏅 称号を選ぶ
+                    </span>
+                  )}
+                </PendingLink>
                 <p className="text-[10px] uppercase tracking-wider text-slate-500">
                   ログイン中
                 </p>

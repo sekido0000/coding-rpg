@@ -47,6 +47,8 @@ class QueryBuilder
   private operation: Operation = "select";
   private filters: ((row: Row) => boolean)[] = [];
   private conflictColumns: string[] = [];
+  // true の時は，すでにある行を書き換えない
+  private ignoreDuplicates = false;
   private values: Row | Row[] = {};
   private returnsRows = false;
 
@@ -72,11 +74,15 @@ class QueryBuilder
 
   upsert(
     values: Row | Row[],
-    { onConflict }: { onConflict: string },
+    {
+      onConflict,
+      ignoreDuplicates = false,
+    }: { onConflict: string; ignoreDuplicates?: boolean },
   ) {
     this.operation = "upsert";
     this.values = values;
     this.conflictColumns = onConflict.split(",");
+    this.ignoreDuplicates = ignoreDuplicates;
     return this;
   }
 
@@ -249,7 +255,9 @@ class QueryBuilder
           );
 
           if (existing) {
-            Object.assign(existing, newRow);
+            if (!this.ignoreDuplicates) {
+              Object.assign(existing, newRow);
+            }
           } else {
             rows.push({ ...newRow });
           }
@@ -339,9 +347,53 @@ export class FakeSupabase {
       };
     }
 
+    if (name === "get_title_stats") {
+      return {
+        data: this.getTitleStats(args),
+        error: null,
+      };
+    }
+
     return {
       data: null,
       error: { message: `unknown function: ${name}` },
+    };
+  }
+
+  // supabase/migrations/20261120_add_titles.sql と同じ数え方をする
+  private getTitleStats(args: Row) {
+    const userId = args.p_user_id;
+    const repositoryIds = this.rows("repositories")
+      .filter((row) => row.user_id === userId)
+      .map((row) => row.id);
+    const characterIds = this.rows("characters")
+      .filter((row) => repositoryIds.includes(row.repository_id))
+      .map((row) => row.id);
+    const events = this.rows("growth_events").filter((row) =>
+      characterIds.includes(row.character_id),
+    );
+    const completions = this.rows("quest_completions").filter(
+      (row) => row.user_id === userId,
+    );
+
+    return {
+      quest_stars: completions.length,
+      quest_gold: completions.reduce(
+        (total, row) => total + (row.gold as number),
+        0,
+      ),
+      characters: characterIds.length,
+      commits: events.filter(
+        (row) =>
+          String(row.event_type).startsWith("commit_") &&
+          (row.xp as number) > 0,
+      ).length,
+      evolutions: events.filter(
+        (row) => row.event_type === "level_up",
+      ).length,
+      purchases: this.rows("user_items")
+        .filter((row) => row.user_id === userId)
+        .reduce((total, row) => total + (row.quantity as number), 0),
     };
   }
 

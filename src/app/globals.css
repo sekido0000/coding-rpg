@@ -203,6 +203,55 @@ body {
   animation: world-level-up 1.2s ease-in-out 3;
 }
 
+/* ---------- 称号 ---------- */
+
+/* 金の称号：ときどき光の筋が横切る */
+.title-shine::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    105deg,
+    transparent 35%,
+    rgb(255 255 255 / 0.75) 50%,
+    transparent 65%
+  );
+  transform: translateX(-120%);
+  animation: title-shine 3.5s ease-in-out infinite;
+}
+
+/* 虹の称号：虹色の枠が流れる */
+.title-rainbow {
+  background: linear-gradient(
+    90deg,
+    #f87171,
+    #fbbf24,
+    #4ade80,
+    #38bdf8,
+    #a78bfa,
+    #f472b6,
+    #f87171
+  );
+  background-size: 200% 100%;
+  animation: title-rainbow 3s linear infinite;
+}
+
+@keyframes title-shine {
+  0%,
+  60% {
+    transform: translateX(-120%);
+  }
+  100% {
+    transform: translateX(120%);
+  }
+}
+
+@keyframes title-rainbow {
+  to {
+    background-position: 200% 0;
+  }
+}
+
 /* ---------- おとも ---------- */
 
 /* おともが小さく弾む */
@@ -374,11 +423,18 @@ body {
   .world-announce,
   .world-level-up,
   .quest-stamp,
+  .title-rainbow,
   .companion-bob,
   .aura-twinkle,
   .aura-flicker,
   .aura-spin {
     animation: none;
+  }
+
+  /* 光の筋は出さない */
+  .title-shine::after {
+    animation: none;
+    display: none;
   }
 
   /* 立ちのぼる文字は，動かさない代わりに薄く表示しておく */
