@@ -151,4 +151,27 @@ describe("クエストの報酬", () => {
       { quest_id: "days", stage: 1, gold: 10 },
     ]);
   });
+
+  it("★が増えるほど報酬が増え，毎回クエストは30", () => {
+    const rewards = getQuestRewards(
+      evaluateWeeklyQuests(
+        [
+          commit("2026-11-16T01:00:00Z"),
+          commit("2026-11-16T02:00:00Z"),
+          commit("2026-11-17T01:00:00Z"),
+        ],
+        WEEK,
+      ),
+    );
+
+    expect(rewards).toEqual([
+      { quest_id: "commits", stage: 1, gold: 10 },
+      { quest_id: "commits", stage: 2, gold: 20 },
+      { quest_id: "days", stage: 1, gold: 10 },
+      { quest_id: "days", stage: 2, gold: 20 },
+      { quest_id: "xp", stage: 1, gold: 10 },
+      { quest_id: "xp", stage: 2, gold: 20 },
+      { quest_id: "every_time", stage: 1, gold: 30 },
+    ]);
+  });
 });
