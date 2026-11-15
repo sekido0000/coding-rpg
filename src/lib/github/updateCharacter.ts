@@ -337,6 +337,12 @@ export async function updateCharacter(
               description: result.subject,
               created_at:
                 countedCommits[index].timestamp ?? now,
+              // 点数の内訳（成長履歴での表示やクエストの判定に使う）
+              category_xp: result.categoryXp,
+              size_xp: result.sizeXp,
+              body_xp: result.bodyXp,
+              changed_lines: result.changedLines,
+              is_vague: result.isVague,
             },
           ]
         : [],

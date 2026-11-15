@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  BODY_BONUS_XP,
   COMMIT_CATEGORIES,
   getCommitCategoryFromEventType,
 } from "@/lib/growth/xp";
@@ -11,7 +12,53 @@ type GrowthEvent = {
   xp: number | null;
   description: string;
   created_at: string;
+  // 点数の内訳．内訳を保存する前の履歴では null
+  category_xp?: number | null;
+  size_xp?: number | null;
+  body_xp?: number | null;
+  is_vague?: boolean | null;
 };
+
+/*
+ * コミットの点数の内訳と，次に点数を増やすためのヒント．
+ * 内訳を保存する前の履歴では何も表示しない．
+ */
+function XpBreakdown({
+  event,
+  categoryLabel,
+}: {
+  event: GrowthEvent;
+  categoryLabel: string;
+}) {
+  if (event.category_xp == null) {
+    return null;
+  }
+
+  const parts = [
+    `${categoryLabel} ${event.category_xp}`,
+    ...(event.size_xp ? [`変更量 ${event.size_xp}`] : []),
+    ...(event.body_xp ? [`理由 ${event.body_xp}`] : []),
+  ];
+
+  const hint = event.is_vague
+    ? "何をしたか分かるメッセージにすると，点数が倍になり，ボーナスも付きます"
+    : !event.body_xp
+      ? `2行目以降に変更の理由を書くと +${BODY_BONUS_XP} XP`
+      : null;
+
+  return (
+    <div className="mt-1 space-y-1 text-xs">
+      <p className="text-slate-400">
+        内訳：{parts.join(" ＋ ")}
+        {event.is_vague && "（メッセージがあいまいなので半分）"}
+      </p>
+
+      {hint && (
+        <p className="text-amber-200/80">💡 {hint}</p>
+      )}
+    </div>
+  );
+}
 
 type GrowthTimelineProps = {
   growthEvents: GrowthEvent[];
@@ -124,9 +171,18 @@ export function GrowthTimeline({
                 {!isBirth &&
                   !isLevelUp &&
                   event.xp !== null && (
-                    <p className="mt-3 text-xs text-emerald-300">
-                      +{event.xp} XP
-                    </p>
+                    <div className="mt-3">
+                      <p className="text-xs text-emerald-300">
+                        +{event.xp} XP
+                      </p>
+
+                      {categoryInfo && (
+                        <XpBreakdown
+                          event={event}
+                          categoryLabel={categoryInfo.label}
+                        />
+                      )}
+                    </div>
                 )}
 
 
