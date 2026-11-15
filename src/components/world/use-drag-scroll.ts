@@ -2,8 +2,9 @@
 
 import { useEffect, type RefObject } from "react";
 
-// これ以上動かしたら「ドラッグ」とみなし，離した時のクリックを取り消す（ピクセル）
-const DRAG_THRESHOLD = 6;
+// これ以上動かしたら「ドラッグ」とみなし，離した時のクリックを取り消す（ピクセル）．
+// 押す時に少し手が動いただけでクリックが取り消されないよう，余裕を持たせる
+const DRAG_THRESHOLD = 12;
 
 /*
  * 世界を見渡す操作．
