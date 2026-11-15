@@ -2,8 +2,8 @@
  * テスト用の偽のSupabaseクライアント．
  *
  * 表をメモリ上の配列で持ち，Webhookの処理で使う書き方
- * （select・insert・upsert・update・delete と eq・lt・not・maybeSingle・single，
- * それに DB の関数 apply_commit_growth）だけを再現する．
+ * （select・insert・upsert・update・delete と eq・in・gte・lt・not・maybeSingle・single，
+ * それに DB の関数 apply_commit_growth・grant_quest_rewards）だけを再現する．
  * 本物のDBにはつながない．
  */
 
@@ -93,6 +93,22 @@ class QueryBuilder
 
   eq(column: string, value: unknown) {
     this.filters.push((row) => row[column] === value);
+    return this;
+  }
+
+  // 列の値が一覧のどれかに当てはまるかで絞り込む
+  in(column: string, values: unknown[]) {
+    this.filters.push((row) => values.includes(row[column]));
+    return this;
+  }
+
+  // 日時の列を，指定した日時以降かで絞り込む
+  gte(column: string, value: string) {
+    this.filters.push(
+      (row) =>
+        typeof row[column] === "string" &&
+        new Date(row[column] as string) >= new Date(value),
+    );
     return this;
   }
 
@@ -309,17 +325,64 @@ export class FakeSupabase {
       return { data: null, error: failure };
     }
 
-    if (name !== "apply_commit_growth") {
+    if (name === "apply_commit_growth") {
       return {
-        data: null,
-        error: { message: `unknown function: ${name}` },
+        data: this.applyCommitGrowth(args),
+        error: null,
+      };
+    }
+
+    if (name === "grant_quest_rewards") {
+      return {
+        data: this.grantQuestRewards(args),
+        error: null,
       };
     }
 
     return {
-      data: this.applyCommitGrowth(args),
-      error: null,
+      data: null,
+      error: { message: `unknown function: ${name}` },
     };
+  }
+
+  // supabase/migrations/20261118_add_weekly_quests.sql と同じ動きをする
+  private grantQuestRewards(args: Row) {
+    const completions = this.rows("quest_completions");
+    let gold = 0;
+
+    for (const reward of args.p_rewards as Row[]) {
+      const exists = completions.some(
+        (row) =>
+          row.user_id === args.p_user_id &&
+          row.week_start === args.p_week_start &&
+          row.quest_id === reward.quest_id &&
+          row.stage === reward.stage,
+      );
+
+      if (!exists) {
+        completions.push({
+          ...reward,
+          user_id: args.p_user_id,
+          week_start: args.p_week_start,
+        });
+        gold += reward.gold as number;
+      }
+    }
+
+    if (gold > 0) {
+      const wallets = this.rows("user_wallets");
+      const wallet = wallets.find(
+        (row) => row.user_id === args.p_user_id,
+      );
+
+      if (wallet) {
+        wallet.gold = (wallet.gold as number) + gold;
+      } else {
+        wallets.push({ user_id: args.p_user_id, gold });
+      }
+    }
+
+    return gold;
   }
 
   // supabase/migrations/20261115_add_apply_commit_growth.sql と同じ動きをする

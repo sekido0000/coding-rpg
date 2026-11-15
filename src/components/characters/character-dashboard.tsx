@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
+import { useRouter } from "next/navigation";
 import type { RealtimeChannel } from "@supabase/supabase-js";
 import { PendingLink } from "@/components/ui/pending-link";
 import { CharacterCard } from "@/components/characters/character-card";
@@ -18,7 +19,15 @@ type CharacterDashboardProps = {
   characters: Character[];
   pendingRepositories: RepositoryAwaitingCharacter[];
   worldActivity: Record<string, ActivitySummary>;
+  // 今週のクエスト（サーバーで作った表示を受け取る）
+  questBoard: ReactNode;
 };
+
+/*
+ * push でキャラクターが更新されてから，画面のデータを読み直すまでの時間（ミリ秒）．
+ * クエストの報酬は経験値のあとに書き込まれるので，少し待ってから読み直す．
+ */
+const REFRESH_DELAY = 3000;
 
 type CharacterRealtimeRecord = {
   id: string;
@@ -36,7 +45,9 @@ export function CharacterDashboard({
   characters: initialCharacters,
   pendingRepositories,
   worldActivity,
+  questBoard,
 }: CharacterDashboardProps) {
+  const router = useRouter();
   const [characters, setCharacters] =
     useState<Character[]>(initialCharacters);
 
@@ -50,6 +61,9 @@ export function CharacterDashboard({
 
     // 準備の途中で画面を離れた時に，チャンネルを作らないようにする
     let isClosed = false;
+
+    // 続けて更新が届いた時は，最後の更新から待って1回だけ読み直す
+    let refreshTimer: number | undefined;
 
     async function setupRealtime() {
       const {
@@ -95,6 +109,13 @@ export function CharacterDashboard({
                   : character,
               ),
             );
+
+            // クエストの進み具合とゴールドを読み直す
+            window.clearTimeout(refreshTimer);
+            refreshTimer = window.setTimeout(
+              () => router.refresh(),
+              REFRESH_DELAY,
+            );
           },
         )
         // subscribeを呼んで，はじめて変更が届くようになる
@@ -105,20 +126,25 @@ export function CharacterDashboard({
 
     return () => {
       isClosed = true;
+      window.clearTimeout(refreshTimer);
 
       if (channel) {
         supabase.removeChannel(channel);
       }
     };
-  }, []);
+  }, [router]);
 
   return (
     <section>
       {characters.length > 0 && (
-        <RepositoryWorld
-          characters={characters}
-          activity={worldActivity}
-        />
+        <>
+          <RepositoryWorld
+            characters={characters}
+            activity={worldActivity}
+          />
+
+          {questBoard}
+        </>
       )}
 
       <div className="mb-5">
