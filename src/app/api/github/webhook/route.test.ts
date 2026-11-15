@@ -233,6 +233,12 @@ describe("経験値の加算", () => {
         event_type: "commit_feat",
         xp: FEAT_XP,
         created_at: FEAT_COMMIT.timestamp,
+        // 点数の内訳も残る（新機能 20 ＋ 1行の変更 2）
+        category_xp: 20,
+        size_xp: 2,
+        body_xp: 0,
+        changed_lines: 1,
+        is_vague: false,
       }),
     ]);
 
