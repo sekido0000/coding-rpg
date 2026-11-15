@@ -26,6 +26,7 @@ import {
 import { useConversations } from "@/components/world/use-conversations";
 import { useDragScroll } from "@/components/world/use-drag-scroll";
 import { BuildingDialog } from "@/components/world/building-dialog";
+import { CharacterLinkStatus } from "@/components/world/character-link-status";
 import {
   HouseInterior,
   StoreInterior,
@@ -710,7 +711,7 @@ export function RepositoryWorld({
                   href={`/repositories/${character.repositoryId}`}
                   aria-label={`${character.name}（${repositoryName}・レベル${character.level}）の詳細を見る`}
                   tabIndex={isInside ? -1 : undefined}
-                  className={`group absolute z-[var(--depth)] -translate-x-1/2 -translate-y-full rounded-xl outline-none hover:z-[5001] focus-visible:z-[5001] focus-visible:ring-2 focus-visible:ring-emerald-300 ${
+                  className={`group absolute z-[var(--depth)] -translate-x-1/2 -translate-y-full cursor-pointer rounded-xl outline-none before:absolute before:-inset-3 before:content-[''] hover:z-[5001] focus-visible:z-[5001] focus-visible:ring-2 focus-visible:ring-emerald-300 ${
                     isInside ? "pointer-events-none opacity-0" : ""
                   }`}
                   style={
@@ -726,6 +727,9 @@ export function RepositoryWorld({
                     } as CSSProperties
                   }
                 >
+                  {/* 押した後，詳細画面が開くまでの吹き出し */}
+                  <CharacterLinkStatus />
+
                   {speech && (
                     <SpeechBubble
                       speech={speech}
@@ -749,8 +753,12 @@ export function RepositoryWorld({
                     </span>
                   </span>
 
+                  {/*
+                   * マウスを乗せると光り，押した瞬間に少し縮む．
+                   * 押せる範囲は，絵より少し広くしてある（Link の before）．
+                   */}
                   <span
-                    className="repo-character-float relative block"
+                    className="repo-character-float relative block transition-[filter,scale] duration-150 group-hover:drop-shadow-[0_0_10px_rgba(253,224,71,0.95)] group-active:scale-90"
                     // 全員が同じ調子で揺れないよう，揺れ始めをずらす
                     style={{
                       animationDelay: `${-index * 0.37}s`,
