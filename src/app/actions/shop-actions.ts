@@ -1,6 +1,6 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { refresh, revalidatePath } from "next/cache";
 
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
@@ -9,6 +9,7 @@ import {
   isItemId,
   isItemSlot,
 } from "@/lib/items/catalog";
+import { grantTitles } from "@/lib/titles/grant-titles";
 
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -70,8 +71,17 @@ export async function purchaseItemAction(
     return { status: "error", message: "ゴールドが足りません" };
   }
 
+  // お店の称号を渡す．失敗しても，買った装備はそのまま
+  try {
+    await grantTitles(createAdminClient(), userId);
+  } catch (titleError) {
+    console.error("Failed to grant titles:", titleError);
+  }
+
   revalidatePath("/shop");
   revalidatePath("/");
+  // 今開いているページも，最新の状態で表示し直す（Next.js 16 では明示が必要）
+  refresh();
 
   return {
     status: "success",
@@ -125,4 +135,6 @@ export async function equipItemAction(
 
   revalidatePath(`/repositories/${repositoryId}`);
   revalidatePath("/");
+  // 今開いているページも，最新の状態で表示し直す（Next.js 16 では明示が必要）
+  refresh();
 }

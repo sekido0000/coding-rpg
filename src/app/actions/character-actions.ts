@@ -11,6 +11,7 @@ import {
 } from "@/lib/characters/catalog";
 import { normalizeCharacterName } from "@/lib/characters/name";
 import { isCharacterPersonality } from "@/lib/characters/personality";
+import { grantTitles } from "@/lib/titles/grant-titles";
 
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -165,6 +166,13 @@ export async function createCharacterAction(
     throw new Error(
       `成長履歴の作成に失敗しました: ${eventError.message}`,
     );
+  }
+
+  // キャラクターの数の称号を渡す．失敗しても，キャラクターはそのまま
+  try {
+    await grantTitles(adminClient, user.id);
+  } catch (titleError) {
+    console.error("Failed to grant titles:", titleError);
   }
 
   revalidatePath("/");

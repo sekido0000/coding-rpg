@@ -3,6 +3,7 @@ import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import {
   evaluateWeeklyQuests,
+  getEveryTimeStreak,
   getWeekRange,
   getWeekStart,
   type QuestProgress,
@@ -17,6 +18,8 @@ export type WeeklyQuestBoard = {
   weekStart: string;
   // 次にクエストが入れ替わるまでの日数（今日を含む）
   daysLeft: number;
+  // 毎回クエストを何週続けて達成しているか
+  everyTimeStreak: number;
   gold: number;
   progress: QuestBoardItem[];
 };
@@ -40,21 +43,32 @@ export async function getWeeklyQuestBoard(): Promise<WeeklyQuestBoard> {
     ),
   );
 
-  const [events, completions, wallet] = await Promise.all([
-    supabase
-      .from("growth_events")
-      .select("event_type, xp, created_at, body_xp, is_vague")
-      .gte("created_at", from)
-      .lt("created_at", to),
-    supabase
-      .from("quest_completions")
-      .select("quest_id, stage")
-      .eq("week_start", weekStart),
-    supabase.from("user_wallets").select("gold").maybeSingle(),
-  ]);
+  const [events, completions, wallet, everyTimeWeeks] =
+    await Promise.all([
+      supabase
+        .from("growth_events")
+        .select("event_type, xp, created_at, body_xp, is_vague")
+        .gte("created_at", from)
+        .lt("created_at", to),
+      supabase
+        .from("quest_completions")
+        .select("quest_id, stage")
+        .eq("week_start", weekStart),
+      supabase.from("user_wallets").select("gold").maybeSingle(),
+      // 毎回クエストを達成した週（連続記録に使う）
+      supabase
+        .from("quest_completions")
+        .select("week_start")
+        .eq("quest_id", "every_time"),
+    ]);
 
   // クエストが表示できなくても，ホームは表示する
-  for (const result of [events, completions, wallet]) {
+  for (const result of [
+    events,
+    completions,
+    wallet,
+    everyTimeWeeks,
+  ]) {
     if (result.error) {
       console.error(
         "Failed to fetch weekly quests:",
@@ -91,6 +105,10 @@ export async function getWeeklyQuestBoard(): Promise<WeeklyQuestBoard> {
   return {
     weekStart,
     daysLeft,
+    everyTimeStreak: getEveryTimeStreak(
+      (everyTimeWeeks.data ?? []).map((row) => row.week_start),
+      weekStart,
+    ),
     gold: wallet.data?.gold ?? 0,
     progress,
   };

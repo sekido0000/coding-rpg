@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   evaluateWeeklyQuests,
+  getEveryTimeStreak,
   getQuestRewards,
   getWeekRange,
   getWeekStart,
@@ -173,5 +174,32 @@ describe("クエストの報酬", () => {
       { quest_id: "xp", stage: 2, gold: 20 },
       { quest_id: "every_time", stage: 1, gold: 30 },
     ]);
+  });
+});
+
+describe("毎回クエストの連続記録", () => {
+  it("今週を達成していれば，今週から数える", () => {
+    expect(
+      getEveryTimeStreak(
+        ["2026-11-16", "2026-11-09", "2026-11-02"],
+        "2026-11-16",
+      ),
+    ).toBe(3);
+  });
+
+  it("今週がまだでも，先週までの連続は保つ", () => {
+    expect(
+      getEveryTimeStreak(["2026-11-09", "2026-11-02"], "2026-11-16"),
+    ).toBe(2);
+  });
+
+  it("1週でも抜けたら，そこで止まる", () => {
+    expect(
+      getEveryTimeStreak(
+        ["2026-11-16", "2026-11-02", "2026-10-26"],
+        "2026-11-16",
+      ),
+    ).toBe(1);
+    expect(getEveryTimeStreak(["2026-11-02"], "2026-11-16")).toBe(0);
   });
 });

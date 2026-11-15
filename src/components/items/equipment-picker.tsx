@@ -1,8 +1,7 @@
 "use client";
 
-import { useFormStatus } from "react-dom";
-
 import { equipItemAction } from "@/app/actions/shop-actions";
+import { useEquipmentState } from "@/components/items/equipment-state";
 import { AuraEffect } from "@/components/items/aura-effect";
 import { CompanionSprite } from "@/components/items/companion-sprite";
 import { PendingLink } from "@/components/ui/pending-link";
@@ -41,24 +40,27 @@ function ChoiceButton({
   isDisabled: boolean;
   children: React.ReactNode;
 }) {
-  const { pending } = useFormStatus();
-
   return (
     <button
       type="submit"
-      disabled={isDisabled || isSelected || pending}
+      disabled={isDisabled || isSelected}
       aria-pressed={isSelected}
       className={`flex items-center gap-2 rounded-xl border px-3 py-2 text-sm transition disabled:cursor-not-allowed ${
         isSelected
           ? "border-emerald-300/60 bg-emerald-400/15 text-emerald-100"
           : "border-white/10 bg-white/5 text-slate-200 hover:border-emerald-300/40 hover:bg-white/10 disabled:opacity-40 disabled:hover:border-white/10 disabled:hover:bg-white/5"
-      } ${pending ? "opacity-60" : ""}`}
+      }`}
     >
       {children}
     </button>
   );
 }
 
+/*
+ * 装備を付け替えるフォーム．
+ * 押した瞬間に表示を切り替え（楽観的更新），保存は裏で行う．
+ * 保存に失敗した時は，処理が終わると自動で元の表示に戻る．
+ */
 function EquipForm({
   character,
   slot,
@@ -70,8 +72,20 @@ function EquipForm({
   itemId: ItemId | null;
   children: React.ReactNode;
 }) {
+  const { setOptimisticEquipment } = useEquipmentState();
+
+  async function equip(formData: FormData) {
+    setOptimisticEquipment(slot, itemId);
+
+    try {
+      await equipItemAction(formData);
+    } catch (error) {
+      console.error("Failed to equip item:", error);
+    }
+  }
+
   return (
-    <form action={equipItemAction}>
+    <form action={equip}>
       <input type="hidden" name="characterId" value={character.id} />
       <input
         type="hidden"
@@ -95,10 +109,8 @@ export function EquipmentPicker({
   inventory,
 }: EquipmentPickerProps) {
   const slots: ItemSlot[] = ["companion", "aura"];
-  const current: Record<ItemSlot, ItemId | null> = {
-    companion: character.companionItem,
-    aura: character.auraItem,
-  };
+  // 付け替えた瞬間の表示（楽観的更新）を使う
+  const { equipment: current } = useEquipmentState();
 
   const hasItems = Object.keys(inventory.items).length > 0;
 

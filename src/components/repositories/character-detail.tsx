@@ -10,7 +10,10 @@ import {
 import type { Character } from "@/types/character";
 import { GrowthTimeline } from "@/components/repositories/growth-timeline";
 import { getGrowthEvents } from "@/lib/growth/events";
-import { EquipmentLayers } from "@/components/items/equipment-layers";
+import {
+  EquipmentStateProvider,
+  OptimisticEquipmentLayers,
+} from "@/components/items/equipment-state";
 import { EquipmentPicker } from "@/components/items/equipment-picker";
 import type { Inventory } from "@/data/inventory";
 
@@ -61,6 +64,11 @@ export function CharacterDetail({
       : 0;
 
   return (
+    // 付け替えた装備を，キャラクターの絵と装備の欄で共有する
+    <EquipmentStateProvider
+      companionItem={character.companionItem}
+      auraItem={character.auraItem}
+    >
     <main className="repo-world min-h-screen px-4 py-5 sm:px-6 lg:px-8">
       <div className="mx-auto max-w-[1560px]">
         <header className="repo-panel mb-5 flex flex-col gap-4 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
@@ -138,10 +146,7 @@ export function CharacterDetail({
 
               <div className="repo-character-walk relative z-10">
                 <div className="repo-character-float">
-                  <EquipmentLayers
-                    companionItem={character.companionItem}
-                    auraItem={character.auraItem}
-                  >
+                  <OptimisticEquipmentLayers>
                     <Image
                       src={evolution.imagePath}
                       alt={`${character.name}の${evolution.name}`}
@@ -150,7 +155,7 @@ export function CharacterDetail({
                       priority
                       className="repo-pixel-image h-auto w-[min(60vw,400px)] drop-shadow-[0_28px_20px_rgba(0,0,0,0.55)]"
                     />
-                  </EquipmentLayers>
+                  </OptimisticEquipmentLayers>
                 </div>
                 <div className="repo-character-shadow" />
               </div>
@@ -228,5 +233,6 @@ export function CharacterDetail({
         />
       </div>
     </main>
+    </EquipmentStateProvider>
   );
 }

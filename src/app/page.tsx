@@ -6,6 +6,8 @@ import { getRepositoriesAwaitingCharacter } from "@/data/repositories";
 import { getWorldActivity } from "@/data/world-activity";
 import { getWeeklyQuestBoard } from "@/data/quests";
 import { QuestBoard } from "@/components/quests/quest-board";
+import { TitleBadge } from "@/components/titles/title-badge";
+import { getSelectedTitle } from "@/data/titles";
 import { signOutAction } from "@/app/actions/auth-actions";
 import { createClient } from "@/lib/supabase/server";
 import { SignOutButton } from "@/components/auth/sign-out-button";
@@ -31,11 +33,13 @@ export default async function Home() {
     pendingRepositories,
     worldActivity,
     questBoard,
+    selectedTitle,
   ] = await Promise.all([
     getCharacters(),
     getRepositoriesAwaitingCharacter(),
     getWorldActivity(),
     getWeeklyQuestBoard(),
+    getSelectedTitle(),
   ]);
 
   const githubName =
@@ -75,6 +79,13 @@ export default async function Home() {
               使い方
             </PendingLink>
 
+            <PendingLink
+              href="/titles"
+              className="rounded-xl border border-amber-300/30 bg-amber-300/10 px-4 py-2 text-sm font-semibold text-amber-200 transition hover:border-amber-200/60 hover:bg-amber-300/20"
+            >
+              🏅 称号
+            </PendingLink>
+
             <RedirectLink
               href="/github/install"
               pendingText="GitHubへ移動中..."
@@ -85,10 +96,18 @@ export default async function Home() {
 
             <div className="flex items-center gap-3 rounded-xl border border-slate-700 bg-slate-900/70 py-1.5 pl-3 pr-1.5">
               <div className="min-w-0">
-                <p className="text-[10px] uppercase tracking-wider text-slate-500">
-                  ログイン中
-                </p>
-                <p className="max-w-36 truncate text-sm font-semibold text-white">
+                {/* 選んでいる称号を，名前の上に表示する */}
+                {selectedTitle && (
+                  <p className="mb-1">
+                    <span className="sr-only">称号：</span>
+                    <TitleBadge
+                      name={selectedTitle.name}
+                      rank={selectedTitle.rank}
+                      size="sm"
+                    />
+                  </p>
+                )}
+                <p className="max-w-40 truncate text-sm font-semibold text-white">
                   {githubName}
                 </p>
               </div>
