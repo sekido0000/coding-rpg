@@ -28,14 +28,14 @@ export default async function TitlesPage() {
             href="/"
             className="rounded-xl border border-slate-700 px-4 py-2 text-sm font-semibold text-slate-300 transition hover:border-slate-500 hover:text-white"
           >
-            村へ戻る
+            ワールドへ戻る
           </PendingLink>
         </div>
 
         <div className="mb-8">
           <h1 className="text-3xl font-black text-white">🏅 称号</h1>
           <p className="mt-2 text-sm text-slate-400">
-            集めた称号から1つ選ぶと，村の画面の上に表示されます．もらった称号は消えません．
+            集めた称号から1つ選ぶと，ワールドの画面の上に表示されます．もらった称号は消えません．
             （{earnedCount} / {totalCount} 個）
           </p>
         </div>
