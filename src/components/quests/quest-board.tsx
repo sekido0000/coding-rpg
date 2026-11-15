@@ -206,13 +206,6 @@ export function QuestBoard({ board }: QuestBoardProps) {
           </p>
 
           <PendingLink
-            href="/titles"
-            className="rounded-full border border-slate-600 px-3 py-1 text-sm font-bold text-slate-200 transition hover:border-slate-400 hover:text-white"
-          >
-            🏅 称号
-          </PendingLink>
-
-          <PendingLink
             href="/shop"
             className="rounded-full bg-amber-300 px-3 py-1 text-sm font-bold text-slate-950 transition hover:bg-amber-200"
           >
