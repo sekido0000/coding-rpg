@@ -203,6 +203,26 @@ body {
   animation: world-level-up 1.2s ease-in-out 3;
 }
 
+/*
+ * クエストの達成・失敗のハンコ．斜めに傾けて押す．
+ * 押した瞬間のように，大きい状態から縮んで止まる．
+ */
+.quest-stamp {
+  transform: translateY(-50%) rotate(-14deg);
+  animation: quest-stamp 0.45s cubic-bezier(0.3, 1.4, 0.6, 1) both;
+}
+
+@keyframes quest-stamp {
+  0% {
+    opacity: 0;
+    transform: translateY(-50%) rotate(-14deg) scale(1.8);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(-50%) rotate(-14deg) scale(1);
+  }
+}
+
 @keyframes world-xp-pop {
   0% {
     opacity: 0;
@@ -270,7 +290,8 @@ body {
   .world-xp-pop,
   .world-hop,
   .world-announce,
-  .world-level-up {
+  .world-level-up,
+  .quest-stamp {
     animation: none;
   }
 }

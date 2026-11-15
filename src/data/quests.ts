@@ -8,12 +8,17 @@ import {
   type QuestProgress,
 } from "@/lib/quests/weekly";
 
+export type QuestBoardItem = QuestProgress & {
+  // 報酬を渡し終えた段階の数．達成した段階より少ない時は，次の push で受け取る
+  claimedStages: number;
+};
+
 export type WeeklyQuestBoard = {
   weekStart: string;
   // 次にクエストが入れ替わるまでの日数（今日を含む）
   daysLeft: number;
   gold: number;
-  progress: QuestProgress[];
+  progress: QuestBoardItem[];
 };
 
 /*
@@ -74,8 +79,13 @@ export async function getWeeklyQuestBoard(): Promise<WeeklyQuestBoard> {
     const claimed = claimedStages.get(item.quest.id) ?? 0;
 
     return claimed > item.achievedStages
-      ? { ...item, achievedStages: claimed, isFailed: false }
-      : item;
+      ? {
+          ...item,
+          achievedStages: claimed,
+          isFailed: false,
+          claimedStages: claimed,
+        }
+      : { ...item, claimedStages: claimed };
   });
 
   return {
