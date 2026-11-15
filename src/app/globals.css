@@ -203,6 +203,42 @@ body {
   animation: world-level-up 1.2s ease-in-out 3;
 }
 
+/* ---------- リポジトリワールドの地面 ---------- */
+
+/* 見渡せる範囲．スクロールバーは出さず，ドラッグで動かす */
+.world-scroll {
+  scrollbar-width: none;
+  cursor: grab;
+}
+
+.world-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+/* 草地．ドット絵に合わせて，小さな草の粒を規則正しく散らす */
+.world-ground {
+  background-color: #3f7a3d;
+  background-image:
+    radial-gradient(circle, #4f8f47 1.5px, transparent 1.6px),
+    radial-gradient(circle, #35693a 1.5px, transparent 1.6px);
+  background-position: 0 0, 16px 16px;
+  background-size: 32px 32px;
+}
+
+/* 土の道．ふちを少し濃くして，草地との境目を分かるようにする */
+.world-road {
+  background-color: #b48a56;
+  background-image: radial-gradient(
+    circle,
+    #9c7546 1px,
+    transparent 1.2px
+  );
+  background-size: 12px 12px;
+  box-shadow:
+    inset 0 0 0 3px #9c7546,
+    0 0 0 2px rgb(0 0 0 / 0.12);
+}
+
 /* ---------- 称号 ---------- */
 
 /* 金の称号：ときどき光の筋が横切る */

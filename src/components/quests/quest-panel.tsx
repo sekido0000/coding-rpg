@@ -1,6 +1,13 @@
 "use client";
 
-import { useRef, type ReactNode } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
+
+// ワールドの掲示板などから，クエストのパネルを開く時に送る合図
+export const OPEN_QUEST_PANEL_EVENT = "coding-rpg:open-quests";
+
+export function openQuestPanel() {
+  window.dispatchEvent(new Event(OPEN_QUEST_PANEL_EVENT));
+}
 
 type QuestPanelProps = {
   // 受け取り待ちの報酬がある時は，ボタンに「！」を付ける
@@ -10,15 +17,26 @@ type QuestPanelProps = {
 };
 
 /*
- * 今週のクエストを，村の上に重ねて開くパネル．
+ * 今週のクエストを，ワールドの上に重ねて開くパネル．
  * dialog を使うので，Esc キーや背景のクリックで閉じられ，
- * 開いている間は後ろの村を操作できない．
+ * 開いている間は後ろのワールドを操作できない．
  */
 export function QuestPanel({
   hasPendingRewards,
   children,
 }: QuestPanelProps) {
   const dialogRef = useRef<HTMLDialogElement>(null);
+
+  // ワールドの掲示板を押した時にも開く
+  useEffect(() => {
+    const open = () => dialogRef.current?.showModal();
+
+    window.addEventListener(OPEN_QUEST_PANEL_EVENT, open);
+
+    return () => {
+      window.removeEventListener(OPEN_QUEST_PANEL_EVENT, open);
+    };
+  }, []);
 
   return (
     <>

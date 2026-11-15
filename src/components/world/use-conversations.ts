@@ -19,7 +19,6 @@ import {
   type Talker,
 } from "@/lib/world/conversation";
 import {
-  WALK_AREA,
   getWalkDuration,
   type Position,
 } from "@/lib/world/movement";
@@ -34,16 +33,20 @@ export type ConversationWalker = {
   arrivedAt: number;
   // 次に歩き出す時刻（会話中は Infinity にして止める）
   nextMoveAt: number;
+  // この先に通る場所（道に沿って歩いている途中）
+  route?: Position[];
+  // 建物の中にいる間は，この時刻まで外に出てこない
+  insideUntil?: number;
 };
 
 // 会話を始めるか確かめる間隔（ミリ秒）
 const CHECK_INTERVAL = 1500;
 
-// この距離（%）より近くで立ち止まっている2人が，歩み寄って会話する
-const TALK_DISTANCE = 30;
+// この距離（ピクセル）より近くで，同じ道に立ち止まっている2人が，歩み寄って会話する
+const TALK_DISTANCE = 360;
 
-// 会話する時に並ぶ，2人の間の距離（%）
-const MEETING_GAP = 12;
+// 会話する時に並ぶ，2人の間の距離（ピクセル）
+const MEETING_GAP = 64;
 
 // 歩み寄ってから話し始めるまでの間（ミリ秒）
 const MEETING_PAUSE = 400;
@@ -61,12 +64,10 @@ const LAST_LINE_DURATION = 3500;
 /*
  * 2人が会話する時に並ぶ場所．
  * 2人の真ん中を中心に，今の左右の並びを保ったまま横に並べる．
+ * 2人は同じ道の上にいるので，並ぶ場所も道の上になる．
  */
 function getMeetingPositions(a: Position, b: Position) {
-  const centerX = Math.min(
-    Math.max((a.x + b.x) / 2, WALK_AREA.minX + MEETING_GAP / 2),
-    WALK_AREA.maxX - MEETING_GAP / 2,
-  );
+  const centerX = (a.x + b.x) / 2;
   const y = (a.y + b.y) / 2;
   const aIsLeft = a.x <= b.x;
 
@@ -160,6 +161,9 @@ export function useConversations<T extends ConversationWalker>({
         !!walker &&
         now >= walker.arrivedAt &&
         Number.isFinite(walker.nextMoveAt) &&
+        // 道を歩いている途中や，建物の中にいる時は話さない
+        !walker.route?.length &&
+        !((walker.insideUntil ?? 0) > now) &&
         !isSpeaking(character.id) &&
         now - (lastTalkAt.get(character.id) ?? 0) >=
           TALK_COOLDOWN
@@ -176,11 +180,10 @@ export function useConversations<T extends ConversationWalker>({
           const a = walkersRef.current[ready[i].id];
           const b = walkersRef.current[ready[j].id];
 
+          // 同じ道の上で，近くにいる2人
           if (
-            Math.hypot(
-              a.position.x - b.position.x,
-              a.position.y - b.position.y,
-            ) <= TALK_DISTANCE
+            a.position.y === b.position.y &&
+            Math.abs(a.position.x - b.position.x) <= TALK_DISTANCE
           ) {
             // どちらが話しかけるかは毎回変える
             return Math.random() < 0.5
