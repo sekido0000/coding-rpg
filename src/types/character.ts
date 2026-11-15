@@ -1,4 +1,5 @@
 import type { CharacterPersonality } from "@/lib/characters/personality";
+import type { ItemId } from "@/lib/items/catalog";
 import {
   CHARACTER_TYPES,
   type CharacterType,
@@ -24,4 +25,7 @@ export type Character = {
   requiredXp: number;
   latestActivity: string;
   githubInstallationId: number;
+  // 付けている装備．付けていない時は null
+  companionItem: ItemId | null;
+  auraItem: ItemId | null;
 };
