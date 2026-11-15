@@ -134,6 +134,7 @@ export default async function Home() {
           <QuestPanel hasPendingRewards={questBoard.hasPendingRewards}>
             <QuestBoard board={questBoard} />
           </QuestPanel>
+          <HudLink href="/battle" icon="⚔️" label="ボス戦" />
           <HudLink href="/characters" icon="👥" label="キャラクター" />
           <HudLink href="/shop" icon="🏪" label="雑貨店" />
           <HudLink href="/titles" icon="🏅" label="称号" />

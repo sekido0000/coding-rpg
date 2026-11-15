@@ -3,6 +3,7 @@
 import { DotGothic16 } from "next/font/google";
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   useEffect,
   useMemo,
@@ -20,6 +21,7 @@ import {
   FlowerBed,
   HOUSE_COLORS,
   House,
+  DungeonGate,
   GeneralStore,
   QuestBoardSign,
   Tree,
@@ -233,6 +235,8 @@ function LotArt({
       return <QuestBoardSign hasNotice={hasPendingRewards} />;
     case "general_store":
       return <GeneralStore />;
+    case "dungeon_gate":
+      return <DungeonGate />;
     case "building": {
       const Exterior = BUILDING_EXTERIORS[lot.buildingId!];
 
@@ -286,6 +290,8 @@ function getLotLabel(lot: Lot, owner?: Character) {
       return "📜 クエスト掲示板";
     case "general_store":
       return "🏪 雑貨店";
+    case "dungeon_gate":
+      return "⚔️ ダンジョンの入口";
     case "building": {
       const building = BUILDING_CATALOG[lot.buildingId!];
 
@@ -370,6 +376,7 @@ function LotBuilding({
   onBuildAction: (lot: Lot) => void;
   onDragStart: (lot: Lot, event: ReactPointerEvent) => void;
 }) {
+  const router = useRouter();
   const style: CSSProperties = {
     left: lot.x,
     top: lot.bottom,
@@ -419,7 +426,7 @@ function LotBuilding({
 
   const label = getLotLabel(lot, owner);
 
-  // ふだん押した時に開く画面（掲示板はクエストのパネル）
+  // ふだん押した時に開く画面（掲示板はクエストのパネル，ダンジョンの入口はボス戦のページ）
   const open = () => {
     if (lot.kind === "house" && owner) {
       onOpen({ kind: "house", characterId: owner.id });
@@ -429,6 +436,8 @@ function LotBuilding({
       onOpen({ kind: "building", buildingId: lot.buildingId });
     } else if (lot.kind === "quest_board") {
       openQuestPanel();
+    } else if (lot.kind === "dungeon_gate") {
+      router.push("/battle");
     }
   };
 
@@ -446,7 +455,9 @@ function LotBuilding({
       aria-label={
         isBuildMode
           ? `${label}（ドラッグで移す・押すと移す/取り壊す）`
-          : `${label}（中をのぞく）`
+          : lot.kind === "dungeon_gate"
+            ? `${label}（ボス戦へ）`
+            : `${label}（中をのぞく）`
       }
       className={`${base} ${clickable} ${
         isBuildMode
