@@ -358,7 +358,7 @@ export const STAR_BASE_STATS: Record<
   2: { hp: 650, attack: 40, defense: 12, speed: 14 },
   3: { hp: 1000, attack: 62, defense: 18, speed: 18 },
   4: { hp: 1900, attack: 185, defense: 26, speed: 24 },
-  5: { hp: 2600, attack: 260, defense: 34, speed: 30 },
+  5: { hp: 3000, attack: 300, defense: 36, speed: 30 },
 };
 
 // ★ごとの強さの目安（画面に出す）
@@ -367,7 +367,7 @@ export const STAR_GUIDES: Record<BossStar, string> = {
   2: "Lv2〜3 なら勝てる",
   3: "Lv5 前後か，2〜3体のパーティーで",
   4: "弱点に合わせた役割の組み合わせが必要",
-  5: "Lv15 のパーティーで，役割と技をよく考えてやっと勝てる",
+  5: "Lv15 のパーティーに，そのボスに有効な装備をそろえて挑もう",
 };
 
 // 助っ人が入れる★（★4・★5 は自分のキャラクターだけで挑む）

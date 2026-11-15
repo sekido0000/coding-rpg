@@ -244,6 +244,10 @@ function getLotName(
     return "ボス戦の入口";
   }
 
+  if (key === "workshop") {
+    return "工房";
+  }
+
   if (isBuildingId(key)) {
     return BUILDING_CATALOG[key].name;
   }

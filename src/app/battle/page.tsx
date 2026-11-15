@@ -5,6 +5,7 @@ import { BattleArena } from "@/components/battle/battle-arena";
 import { PendingLink } from "@/components/ui/pending-link";
 import { getBattleStatus } from "@/data/battle";
 import { getCharacters } from "@/data/characters";
+import { getOwnedGear } from "@/data/gear";
 import { getInventory } from "@/data/inventory";
 import { getCharacterEvolution } from "@/lib/characters/catalog";
 import { createClient } from "@/lib/supabase/server";
@@ -25,10 +26,11 @@ export default async function BattlePage() {
     redirect("/");
   }
 
-  const [characters, status, inventory] = await Promise.all([
-    getCharacters(),
+  const characters = await getCharacters();
+  const [status, inventory, ownedGear] = await Promise.all([
     getBattleStatus(),
     getInventory(),
+    getOwnedGear(characters.map((character) => character.id)),
   ]);
 
   return (
@@ -68,6 +70,7 @@ export default async function BattlePage() {
           }))}
           status={status}
           gold={inventory.gold}
+          ownedGear={ownedGear}
         />
       </div>
     </main>

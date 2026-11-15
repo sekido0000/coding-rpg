@@ -20,6 +20,11 @@ import {
   type BossStar,
 } from "@/lib/battle/bosses";
 import {
+  applyGearBonus,
+  getEffectiveRates,
+  type EquippedGear,
+} from "@/lib/battle/gear";
+import {
   getUnlockedSkills,
   type BuffStat,
   type Element,
@@ -57,6 +62,8 @@ export type BattleMember = {
   characterType: CharacterType;
   level: number;
   isHelper?: boolean;
+  // 付けている武器・防具
+  gear?: EquippedGear[];
 };
 
 export type BattleUnit = {
@@ -70,6 +77,9 @@ export type BattleUnit = {
   level?: number;
   role?: Role;
   isHelper?: boolean;
+  // 戦うボスに有効な武器・防具を付けている
+  hasEffectiveWeapon?: boolean;
+  hasEffectiveArmor?: boolean;
 };
 
 export type BattleHit = {
@@ -137,6 +147,9 @@ type Fighter = {
   critRate: number;
   // 通常攻撃の種類（物理攻撃と魔法攻撃の高いほう）
   basicElement: Element;
+  // 有効な装備による，与える・受けるダメージの倍率
+  damageDealtRate: number;
+  damageTakenRate: number;
 };
 
 function getStat(fighter: Fighter, stat: BuffStat) {
@@ -205,8 +218,17 @@ function hasModifier(target: Fighter, stat: BuffStat, sign: number) {
 
 /* ---------- 戦いの準備 ---------- */
 
-function createPartyFighter(member: BattleMember, index: number): Fighter {
-  const stats = getCharacterStats(member.characterType, member.level);
+function createPartyFighter(
+  member: BattleMember,
+  index: number,
+  bossId: BossId,
+): Fighter {
+  const gear = member.gear ?? [];
+  const stats = applyGearBonus(
+    getCharacterStats(member.characterType, member.level),
+    gear,
+  );
+  const rates = getEffectiveRates(gear, bossId);
   const role = CHARACTER_BATTLE_TYPES[member.characterType].role;
   const skills = getUnlockedSkills(member.characterType, member.level);
 
@@ -221,6 +243,8 @@ function createPartyFighter(member: BattleMember, index: number): Fighter {
       level: member.level,
       role,
       isHelper: member.isHelper,
+      hasEffectiveWeapon: rates.damageDealt > 1 || undefined,
+      hasEffectiveArmor: rates.damageTaken < 1 || undefined,
     },
     stats,
     hp: stats.hp,
@@ -232,6 +256,8 @@ function createPartyFighter(member: BattleMember, index: number): Fighter {
     cooldowns: skills.map(() => 0),
     critRate: ROLE_CATALOG[role].critRate,
     basicElement: stats.magic > stats.attack ? "magic" : "physical",
+    damageDealtRate: rates.damageDealt,
+    damageTakenRate: rates.damageTaken,
   };
 }
 
@@ -270,6 +296,8 @@ function createBossFighter(bossId: BossId, star: BossStar): Fighter {
     cooldowns: [],
     critRate: boss.critRate ?? BOSS_CRIT_RATE,
     basicElement: "physical",
+    damageDealtRate: 1,
+    damageTakenRate: 1,
   };
 }
 
@@ -288,7 +316,9 @@ export function simulateBattle({
 }): BattleResult {
   const random = createRandom(seed);
   const boss = BOSS_CATALOG[bossId];
-  const party = members.slice(0, 3).map(createPartyFighter);
+  const party = members
+    .slice(0, 3)
+    .map((member, index) => createPartyFighter(member, index, bossId));
   const bossFighter = createBossFighter(bossId, star);
   const everyone = [...party, bossFighter];
   const steps: BattleStep[] = [];
@@ -413,6 +443,7 @@ export function simulateBattle({
           random,
         ) *
           rate *
+          actor.damageDealtRate *
           (isCrit ? 1.5 : 1),
       ),
     );
@@ -645,7 +676,9 @@ export function simulateBattle({
             power,
             getStat(target, "defense"),
             random,
-          ) * (isCrit ? 1.5 : 1),
+          ) *
+            target.damageTakenRate *
+            (isCrit ? 1.5 : 1),
         ),
       );
 
