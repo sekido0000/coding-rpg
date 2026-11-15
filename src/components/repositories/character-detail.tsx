@@ -14,9 +14,10 @@ import {
   EquipmentStateProvider,
   OptimisticEquipmentLayers,
 } from "@/components/items/equipment-state";
-import { BattleProfile } from "@/components/battle/battle-profile";
+import { CharacterGearPanel } from "@/components/battle/character-gear-panel";
 import { EquipmentPicker } from "@/components/items/equipment-picker";
 import type { Inventory } from "@/data/inventory";
+import type { OwnedGear } from "@/lib/battle/owned-gear";
 
 type CharacterDetailProps = {
   character: Character;
@@ -24,12 +25,16 @@ type CharacterDetailProps = {
     ReturnType<typeof getGrowthEvents>
   >;
   inventory: Inventory;
+  ownedGear: OwnedGear[];
+  characterNames: Record<string, string>;
 };
 
 export function CharacterDetail({
   character,
   growthEvents,
   inventory,
+  ownedGear,
+  characterNames,
 }: CharacterDetailProps) {
   const definition =
     CHARACTER_CATALOG[
@@ -233,9 +238,14 @@ export function CharacterDetail({
           inventory={inventory}
         />
 
-        <BattleProfile
-          characterType={character.characterType}
-          level={character.level}
+        <CharacterGearPanel
+          character={{
+            id: character.id,
+            characterType: character.characterType,
+            level: character.level,
+          }}
+          ownedGear={ownedGear}
+          characterNames={characterNames}
         />
       </div>
     </main>

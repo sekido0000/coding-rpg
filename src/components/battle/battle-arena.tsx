@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useState, useTransition, type ReactNode } from "react";
 
 import {
   challengeBossAction,
@@ -10,6 +10,9 @@ import {
 } from "@/app/actions/battle-actions";
 import { BattleViewer } from "@/components/battle/battle-viewer";
 import { BossSprite } from "@/components/battle/boss-sprite";
+import { GearSelect } from "@/components/battle/gear-select";
+import { useGearEquip } from "@/components/battle/use-gear-equip";
+import { PendingLink } from "@/components/ui/pending-link";
 import type { BattleStatus } from "@/data/battle";
 import {
   BOSS_CATALOG,
@@ -28,6 +31,8 @@ import {
   fillWithHelpers,
   recommendParty,
 } from "@/lib/battle/party";
+import { applyGearBonus } from "@/lib/battle/gear";
+import { getEquippedGear, type OwnedGear } from "@/lib/battle/owned-gear";
 import type { BattleMember } from "@/lib/battle/simulate";
 import { describeSkill, getUnlockedSkills } from "@/lib/battle/skills";
 import {
@@ -77,40 +82,46 @@ function PartySlot({
   character,
   helper,
   onRemove,
+  children,
 }: {
   character?: BattleCharacter;
   helper?: BattleMember;
   onRemove: () => void;
+  // 武器・防具を選ぶ欄
+  children?: ReactNode;
 }) {
   const box =
-    "flex aspect-square flex-col items-center justify-center gap-1 rounded-2xl border-2 p-2 text-center";
+    "flex h-full min-h-52 flex-col items-center justify-center gap-1 rounded-2xl border-2 p-2 text-center";
 
   if (character) {
     return (
-      <button
-        type="button"
-        onClick={onRemove}
-        aria-label={`${character.name}をパーティーから外す`}
-        className={`${box} group relative border-amber-300 bg-amber-300/10 transition hover:bg-amber-300/20`}
-      >
-        <span className="absolute right-2 top-2 rounded-full bg-slate-950/70 px-1.5 text-xs text-slate-300 opacity-60 transition group-hover:opacity-100">
-          ✕
-        </span>
-        <Image
-          src={character.imagePath}
-          alt=""
-          width={112}
-          height={112}
-          className="h-3/5 w-3/5"
-        />
-        <span className="w-full truncate text-sm font-bold text-white">
-          {character.name}
-        </span>
-        <span className="flex flex-wrap items-center justify-center gap-1 text-xs text-slate-300">
-          Lv{character.level}
-          <RoleBadge characterType={character.characterType} />
-        </span>
-      </button>
+      <div className={`${box} relative border-amber-300 bg-amber-300/10`}>
+        <button
+          type="button"
+          onClick={onRemove}
+          aria-label={`${character.name}をパーティーから外す`}
+          className="group flex w-full flex-col items-center gap-1 rounded-xl p-1 transition hover:bg-amber-300/10"
+        >
+          <span className="absolute right-2 top-2 rounded-full bg-slate-950/70 px-1.5 text-xs text-slate-300 opacity-60 transition group-hover:opacity-100">
+            ✕
+          </span>
+          <Image
+            src={character.imagePath}
+            alt=""
+            width={112}
+            height={112}
+            className="h-20 w-20 sm:h-24 sm:w-24"
+          />
+          <span className="w-full truncate text-sm font-bold text-white">
+            {character.name}
+          </span>
+          <span className="flex flex-wrap items-center justify-center gap-1 text-xs text-slate-300">
+            Lv{character.level}
+            <RoleBadge characterType={character.characterType} />
+          </span>
+        </button>
+        <div className="mt-1 w-full space-y-1 text-left">{children}</div>
+      </div>
     );
   }
 
@@ -122,7 +133,7 @@ function PartySlot({
           alt=""
           width={112}
           height={112}
-          className="h-3/5 w-3/5 opacity-60"
+          className="h-20 w-20 opacity-60 sm:h-24 sm:w-24"
         />
         <span className="w-full truncate text-sm font-bold text-slate-300">
           🤝 {helper.name}
@@ -152,10 +163,12 @@ export function BattleArena({
   characters,
   status,
   gold,
+  ownedGear,
 }: {
   characters: BattleCharacter[];
   status: BattleStatus;
   gold: number;
+  ownedGear: OwnedGear[];
 }) {
   const router = useRouter();
   const [bossId, setBossId] = useState<BossId>(BOSS_IDS[0]);
@@ -171,6 +184,10 @@ export function BattleArena({
   >(null);
   const [message, setMessage] = useState("");
   const [isPending, startTransition] = useTransition();
+  const { shownGear, equip, message: equipMessage } = useGearEquip(ownedGear);
+  const characterNames = Object.fromEntries(
+    characters.map((character) => [character.id, character.name]),
+  );
 
   const boss = BOSS_CATALOG[bossId];
   const isStarWon = Boolean(status.wins[star]);
@@ -415,7 +432,21 @@ export function BattleArena({
                 character={character}
                 helper={helper}
                 onRemove={() => character && togglePartyMember(character.id)}
-              />
+              >
+                {character &&
+                  (["weapon", "armor"] as const).map((slot) => (
+                    <GearSelect
+                      key={slot}
+                      owned={shownGear}
+                      characterId={character.id}
+                      slot={slot}
+                      characterNames={characterNames}
+                      onEquip={equip}
+                      bossId={bossId}
+                      compact
+                    />
+                  ))}
+              </PartySlot>
             );
           })}
         </div>
@@ -425,7 +456,11 @@ export function BattleArena({
           {characters.map((character) => {
             const isSelected = partyIds.includes(character.id);
             const isFull = !isSelected && partyIds.length >= MAX_PARTY_SIZE;
-            const stats = getCharacterStats(character.characterType, character.level);
+            // 付けている武器・防具の効果も足して表示する
+            const stats = applyGearBonus(
+              getCharacterStats(character.characterType, character.level),
+              getEquippedGear(shownGear, character.id),
+            );
             const skills = getUnlockedSkills(character.characterType, character.level);
             const role = getRole(character.characterType);
 
@@ -536,9 +571,9 @@ export function BattleArena({
         </div>
 
         <div className="flex items-center gap-3">
-          {message && (
+          {(message || equipMessage) && (
             <p role="alert" className="text-sm font-semibold text-red-300">
-              {message}
+              {message || equipMessage}
             </p>
           )}
           <button
@@ -571,8 +606,14 @@ export function BattleArena({
             所持金 💰 {gold} G
           </p>
         </div>
-        <p className="mb-3 text-xs text-slate-400">
-          素材はボスに勝つと手に入ります．これから作る工房で，武器や防具の材料になります．
+        <p className="mb-3 flex flex-wrap items-center gap-2 text-xs text-slate-400">
+          素材はボスに勝つと手に入ります．工房で，武器や防具の材料になります．
+          <PendingLink
+            href="/workshop"
+            className="rounded-lg border border-slate-600 px-2 py-1 font-semibold text-slate-200 transition hover:border-slate-400 hover:text-white"
+          >
+            🔨 工房へ
+          </PendingLink>
         </p>
         {MATERIAL_IDS.some((id) => status.materials[id]) ? (
           <ul className="flex flex-wrap gap-2">

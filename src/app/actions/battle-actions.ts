@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 
 import { getCharacters } from "@/data/characters";
+import { getOwnedGear } from "@/data/gear";
 import {
   getBossReward,
   isBossId,
@@ -12,6 +13,7 @@ import {
   type BossStar,
 } from "@/lib/battle/bosses";
 import { MAX_PARTY_SIZE, fillWithHelpers } from "@/lib/battle/party";
+import { getEquippedGear } from "@/lib/battle/owned-gear";
 import { simulateBattle, type BattleResult } from "@/lib/battle/simulate";
 import { getWeekStart } from "@/lib/quests/weekly";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -101,12 +103,18 @@ export async function challengeBossAction(
     };
   }
 
+  // 付けている武器・防具も，DB から読む（ブラウザから受け取らない）
+  const ownedGear = await getOwnedGear(
+    characters.map((character) => character.id),
+  );
+
   const members = fillWithHelpers(
     party.map((character) => ({
       id: character!.id,
       name: character!.name,
       characterType: character!.characterType,
       level: character!.level,
+      gear: getEquippedGear(ownedGear, character!.id),
     })),
     star,
   );

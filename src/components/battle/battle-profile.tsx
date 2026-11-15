@@ -1,3 +1,5 @@
+import type { ReactNode } from "react";
+
 import {
   SKILL_CATALOG,
   describeSkill,
@@ -10,6 +12,7 @@ import {
   STAT_LEVEL_CAP,
   getCharacterStats,
 } from "@/lib/battle/stats";
+import { applyGearBonus, type EquippedGear } from "@/lib/battle/gear";
 import type { CharacterType } from "@/lib/characters/generated-types";
 
 /*
@@ -19,15 +22,25 @@ import type { CharacterType } from "@/lib/characters/generated-types";
 export function BattleProfile({
   characterType,
   level,
+  gear = [],
+  children,
 }: {
   characterType: CharacterType;
   level: number;
+  // 付けている武器・防具（ステータスに効果を足して表示する）
+  gear?: EquippedGear[];
+  // 武器・防具を選ぶ欄
+  children?: ReactNode;
 }) {
   const { role: roleId, bonus } = CHARACTER_BATTLE_TYPES[characterType];
   const role = ROLE_CATALOG[roleId];
-  const stats = getCharacterStats(characterType, level);
+  const baseStats = getCharacterStats(characterType, level);
+  const stats = applyGearBonus(baseStats, gear);
   // 頭打ちのレベルでの値（ゲージの長さに使う）
-  const maxStats = getCharacterStats(characterType, STAT_LEVEL_CAP);
+  const maxStats = applyGearBonus(
+    getCharacterStats(characterType, STAT_LEVEL_CAP),
+    gear,
+  );
   const scale = Math.max(...STAT_KEYS.filter((key) => key !== "hp").map((key) => maxStats[key]));
 
   return (
@@ -47,6 +60,8 @@ export function BattleProfile({
           </p>
           <p className="mt-1 text-xs text-slate-400">{role.description}</p>
 
+          {children && <div className="mt-4 space-y-2">{children}</div>}
+
           <dl className="mt-4 space-y-2">
             {STAT_KEYS.map((key) => {
               const width =
@@ -55,7 +70,7 @@ export function BattleProfile({
                   : (stats[key] / scale) * 100;
 
               return (
-                <div key={key} className="grid grid-cols-[5.5rem_1fr_3rem] items-center gap-2 text-sm">
+                <div key={key} className="grid grid-cols-[5.5rem_1fr_3.5rem] items-center gap-2 text-sm">
                   <dt className="text-slate-300">
                     {STAT_LABELS[key]}
                     {key === bonus && (
@@ -70,14 +85,21 @@ export function BattleProfile({
                       style={{ width: `${Math.min(100, width)}%` }}
                     />
                   </span>
-                  <dd className="text-right font-bold text-white">{stats[key]}</dd>
+                  <dd className="text-right font-bold text-white">
+                    {stats[key]}
+                    {stats[key] > baseStats[key] && (
+                      <span className="block text-[10px] font-semibold text-emerald-300">
+                        +{stats[key] - baseStats[key]}
+                      </span>
+                    )}
+                  </dd>
                 </div>
               );
             })}
           </dl>
           <p className="mt-3 text-xs text-slate-500">
             ステータスはレベルで伸び，Lv{STAT_LEVEL_CAP} で頭打ちになります．
-            {level >= STAT_LEVEL_CAP && "ここから先は，装備で強くなれるようにする予定です．"}
+            {level >= STAT_LEVEL_CAP && "ここから先は，工房で作る武器・防具で強くなれます．"}
           </p>
         </div>
 

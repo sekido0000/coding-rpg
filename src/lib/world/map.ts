@@ -53,6 +53,7 @@ export type LotKind =
   | "quest_board"
   | "general_store"
   | "dungeon_gate"
+  | "workshop"
   | "building"
   | "empty";
 
@@ -107,7 +108,7 @@ export type WorldMap = {
  *
  * 場所を保存した建物（建てた建物や，移した家・掲示板・雑貨店）は，その場所に置く．
  * 掲示板と雑貨店は，移していなければ奥の列の真ん中に置く．
- * 移していない家は，残りの区画に真ん中から近い順に並べ，その次にダンジョンの入口を置く．
+ * 移していない家は，残りの区画に真ん中から近い順に並べ，その次にボス戦の入口と工房を置く．
  * 空いた区画には飾りを置く．
  */
 export function buildWorldMap(
@@ -117,8 +118,8 @@ export function buildWorldMap(
   const purchasedCount = placements.filter((placement) =>
     isBuildingId(placement.key),
   ).length;
-  // 家・建てた建物と，掲示板・雑貨店・ダンジョンの入口
-  const lotCount = characterIds.length + 3 + purchasedCount;
+  // 家・建てた建物と，掲示板・雑貨店・ボス戦の入口・工房
+  const lotCount = characterIds.length + 4 + purchasedCount;
   // 掲示板と雑貨店がちょうど真ん中に来るよう，列の数は偶数にする
   const needed = Math.ceil(lotCount / 2);
   // 場所を保存した建物が端にあっても収まる広さにする
@@ -224,11 +225,13 @@ export function buildWorldMap(
   }
 
   /*
-   * 移していないダンジョンの入口は，家の後に（家が並んだ次の空いた区画に）置く．
+   * 移していないボス戦の入口と工房は，家の後に（家が並んだ次の空いた区画に）置く．
    * あとから増えた建物なので，先に並んでいた家の場所が変わらないようにする．
    */
-  if (!placedKeys.has("dungeon_gate")) {
-    waiting.push({ kind: "dungeon_gate", key: "dungeon_gate" });
+  for (const key of ["dungeon_gate", "workshop"] as const) {
+    if (!placedKeys.has(key)) {
+      waiting.push({ kind: key, key });
+    }
   }
 
   const lots: Lot[] = [];

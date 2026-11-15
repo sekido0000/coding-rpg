@@ -110,15 +110,20 @@ export function isBuildingId(value: unknown): value is BuildingId {
 /*
  * 場所を保存する建物の名前．
  * - 建てた建物：建物の種類（cafe など）
- * - 掲示板・雑貨店・ダンジョンの入口：quest_board・general_store・dungeon_gate
+ * - 掲示板・雑貨店・ボス戦の入口・工房：quest_board・general_store・dungeon_gate・workshop
  * - 家：house:キャラクターのID
  */
-export type FixedLotKey = "quest_board" | "general_store" | "dungeon_gate";
+export type FixedLotKey =
+  | "quest_board"
+  | "general_store"
+  | "dungeon_gate"
+  | "workshop";
 
 export const FIXED_LOT_KEYS: readonly FixedLotKey[] = [
   "quest_board",
   "general_store",
   "dungeon_gate",
+  "workshop",
 ];
 
 export type HouseLotKey = `house:${string}`;

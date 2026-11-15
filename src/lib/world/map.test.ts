@@ -310,3 +310,19 @@ describe("ダンジョンの入口", () => {
     expect(gate).toMatchObject({ row: 1, offset: -3, key: "dungeon_gate" });
   });
 });
+
+describe("工房", () => {
+  it("工房が1つあり，家より後（真ん中から遠い側）に置かれる", () => {
+    const map = buildWorldMap(ids(4));
+    const workshops = map.lots.filter((lot) => lot.kind === "workshop");
+
+    expect(workshops).toHaveLength(1);
+
+    const distance = (lot: { row: number; offset: number }) =>
+      Math.abs(lot.offset - 0.5) + lot.row * 0.5;
+
+    for (const house of map.lots.filter((lot) => lot.kind === "house")) {
+      expect(distance(house)).toBeLessThanOrEqual(distance(workshops[0]));
+    }
+  });
+});
