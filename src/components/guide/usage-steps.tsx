@@ -141,8 +141,8 @@ const steps: UsageStep[] = [
       {
         left: 7.7,
         top: 84.9,
-        width: 42.3,
-        height: 6.2,
+        width: 84.6,
+        height: 5.8,
         caption: "「詳細情報」で，どのコミットで何XP得たか振り返れる",
       },
     ],
