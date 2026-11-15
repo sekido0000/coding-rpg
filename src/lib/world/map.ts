@@ -19,8 +19,8 @@ const LOT_TILES = 7;
 // 地図の左右の余白（マス）
 const MARGIN_TILES = 3;
 
-// 1列に並べる区画の最小数（キャラクターが少なくても世界が狭くなりすぎないように）
-const MIN_COLUMNS = 6;
+// 1列に並べる区画の最小数（キャラクターが少なくても，見渡しがいのある広さにする）
+const MIN_COLUMNS = 14;
 
 // つなぎの道を置く間隔（区画の数）
 const CONNECTOR_EVERY = 3;
@@ -40,7 +40,12 @@ const MAP_HEIGHT_TILES = 22;
 // 道の太さ（ピクセル）
 export const ROAD_WIDTH = TILE * 1.5;
 
-export type LotKind = "house" | "quest_board" | "item_shop" | "empty";
+export type LotKind = "house" | "quest_board" | "general_store" | "empty";
+
+// 空いた区画の飾り
+export type LotDecoration = "flowers" | "grove" | "well" | "bench";
+
+const DECORATIONS: LotDecoration[] = ["flowers", "grove", "bench", "well"];
 
 export type Lot = {
   kind: LotKind;
@@ -54,6 +59,8 @@ export type Lot = {
   door: Position;
   // 家の時は，住んでいるキャラクター
   characterId?: string;
+  // 空いた区画の時は，その飾り
+  decoration?: LotDecoration;
 };
 
 export type WorldMap = {
@@ -71,12 +78,14 @@ export type WorldMap = {
 
 /*
  * キャラクターの数から地図を作る．
- * 掲示板と道具屋を奥の列の真ん中に置き，家はそこから近い順に並べる．
+ * 掲示板と雑貨店を奥の列の真ん中に置き，家はそこから近い順に並べる．
  * 空いた区画は，のちに買った建物を建てる場所になる．
  */
 export function buildWorldMap(characterIds: string[]): WorldMap {
   const lotCount = characterIds.length + 2;
-  const columns = Math.max(MIN_COLUMNS, Math.ceil(lotCount / 2));
+  // 掲示板と雑貨店がちょうど真ん中に来るよう，列の数は偶数にする
+  const needed = Math.ceil(lotCount / 2);
+  const columns = Math.max(MIN_COLUMNS, needed + (needed % 2));
   const width = (columns * LOT_TILES + MARGIN_TILES * 2) * TILE;
   const center = (columns - 1) / 2;
 
@@ -94,11 +103,11 @@ export function buildWorldMap(characterIds: string[]): WorldMap {
       a.column - b.column,
   );
 
-  // 掲示板と道具屋は，奥の列の真ん中に左右に並べる
+  // 掲示板と雑貨店は，奥の列の真ん中に左右に並べる
   const middle = Math.floor(center);
   const fixed = new Map<string, { kind: LotKind }>([
     [`0-${middle}`, { kind: "quest_board" }],
-    [`0-${middle + 1}`, { kind: "item_shop" }],
+    [`0-${middle + 1}`, { kind: "general_store" }],
   ]);
 
   const houses = characterIds.map((characterId) => ({
@@ -122,6 +131,13 @@ export function buildWorldMap(characterIds: string[]): WorldMap {
       x,
       bottom: buildingBottom * TILE,
       door: { x, y: road * TILE },
+      // 空いた区画は，場所によって飾りを変える（毎回同じになるよう，位置から決める）
+      ...(content.kind === "empty"
+        ? {
+            decoration:
+              DECORATIONS[(column * 3 + row * 2) % DECORATIONS.length],
+          }
+        : {}),
     });
   }
 

@@ -71,7 +71,7 @@ export async function purchaseItemAction(
     return { status: "error", message: "ゴールドが足りません" };
   }
 
-  // お店の称号を渡す．失敗しても，買った装備はそのまま
+  // 雑貨店の称号を渡す．失敗しても，買った装備はそのまま
   try {
     await grantTitles(createAdminClient(), userId);
   } catch (titleError) {

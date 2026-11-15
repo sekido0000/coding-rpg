@@ -17,12 +17,20 @@ import {
   FlowerBed,
   HOUSE_COLORS,
   House,
-  ItemShop,
+  GeneralStore,
   QuestBoardSign,
   Tree,
+  Well,
+  Bench,
 } from "@/components/world/buildings";
 import { useConversations } from "@/components/world/use-conversations";
 import { useDragScroll } from "@/components/world/use-drag-scroll";
+import { BuildingDialog } from "@/components/world/building-dialog";
+import {
+  HouseInterior,
+  StoreInterior,
+} from "@/components/world/interiors";
+import type { Inventory } from "@/data/inventory";
 import { useGrowthReactions } from "@/components/world/use-growth-reactions";
 import {
   useSpeeches,
@@ -64,7 +72,14 @@ type RepositoryWorldProps = {
   activity: Record<string, ActivitySummary>;
   // 受け取り待ちのクエストの報酬がある時は，掲示板に印を付ける
   hasPendingRewards: boolean;
+  // 持っているゴールドと装備（雑貨店の中で買い物をする時に使う）
+  inventory: Inventory;
 };
+
+// 中の様子を開いている建物
+type OpenBuilding =
+  | { kind: "house"; characterId: string }
+  | { kind: "store" };
 
 type Walker = {
   position: Position;
@@ -290,11 +305,14 @@ function LotBuilding({
   houseIndex,
   owner,
   hasPendingRewards,
+  onOpen,
 }: {
   lot: Lot;
   houseIndex: number;
   owner?: Character;
   hasPendingRewards: boolean;
+  // 建物を押した時に，中の様子を開く
+  onOpen: (building: OpenBuilding) => void;
 }) {
   const style: CSSProperties = {
     left: lot.x,
@@ -307,12 +325,20 @@ function LotBuilding({
 
   switch (lot.kind) {
     case "house":
-      return (
-        <div className={base} style={style}>
+      return owner ? (
+        <button
+          type="button"
+          onClick={() =>
+            onOpen({ kind: "house", characterId: owner.id })
+          }
+          aria-label={`${owner.name}の家（中をのぞく）`}
+          className={`${base} ${clickable}`}
+          style={style}
+        >
           <House colors={HOUSE_COLORS[houseIndex % HOUSE_COLORS.length]} />
-          {owner && <Nameplate>{`${owner.name}の家`}</Nameplate>}
-        </div>
-      );
+          <Nameplate>{`${owner.name}の家`}</Nameplate>
+        </button>
+      ) : null;
 
     case "quest_board":
       return (
@@ -328,23 +354,46 @@ function LotBuilding({
         </button>
       );
 
-    case "item_shop":
+    case "general_store":
       return (
-        <Link
-          href="/shop"
-          aria-label="道具屋（お店を開く）"
+        <button
+          type="button"
+          onClick={() => onOpen({ kind: "store" })}
+          aria-label="雑貨店（中に入る）"
           className={`${base} ${clickable}`}
           style={style}
         >
-          <ItemShop />
-          <Nameplate>🏪 道具屋</Nameplate>
-        </Link>
+          <GeneralStore />
+          <Nameplate>🏪 雑貨店</Nameplate>
+        </button>
       );
 
     case "empty":
       return (
-        <div className={`${base} pointer-events-none`} style={style}>
-          <FlowerBed />
+        <div
+          className={`${base} pointer-events-none flex items-end gap-2`}
+          style={style}
+        >
+          {lot.decoration === "grove" ? (
+            <>
+              <Tree />
+              <span className="-ml-6 mb-3 block">
+                <Tree />
+              </span>
+            </>
+          ) : lot.decoration === "well" ? (
+            <Well />
+          ) : lot.decoration === "bench" ? (
+            <>
+              <FlowerBed />
+              <Bench />
+            </>
+          ) : (
+            <>
+              <FlowerBed />
+              <FlowerBed />
+            </>
+          )}
         </div>
       );
   }
@@ -370,13 +419,18 @@ function getTreePositions(map: WorldMap): Position[] {
 /*
  * 自分のキャラクター全員が暮らす世界．斜め上から見下ろした地図で，
  * ドラッグやホイールで見渡せる．キャラクターは道を歩き，ときどき自分の家に入る．
- * キャラクターを押すと詳細画面へ，掲示板を押すとクエスト，道具屋を押すとお店が開く．
+ * キャラクターを押すと詳細画面へ，掲示板を押すとクエスト，雑貨店を押すとお店が開く．
  */
 export function RepositoryWorld({
   characters,
   activity,
   hasPendingRewards,
+  inventory,
 }: RepositoryWorldProps) {
+  const [openBuilding, setOpenBuilding] = useState<OpenBuilding | null>(
+    null,
+  );
+
   const characterIds = characters
     .map((character) => character.id)
     .join(",");
@@ -621,6 +675,7 @@ export function RepositoryWorld({
                   houseIndex={Math.max(ownerIndex, 0)}
                   owner={characters[ownerIndex]}
                   hasPendingRewards={hasPendingRewards}
+                  onOpen={setOpenBuilding}
                 />
               );
             })}
@@ -745,6 +800,46 @@ export function RepositoryWorld({
           </div>
         </div>
       </div>
+
+      {/* 建物の中の様子 */}
+      {openBuilding?.kind === "store" && (
+        <BuildingDialog
+          title="🏪 雑貨店"
+          onClose={() => setOpenBuilding(null)}
+        >
+          <StoreInterior inventory={inventory} />
+        </BuildingDialog>
+      )}
+
+      {openBuilding?.kind === "house" &&
+        (() => {
+          const character = characters.find(
+            (item) => item.id === openBuilding.characterId,
+          );
+
+          if (!character) {
+            return null;
+          }
+
+          const walker = walkers[character.id];
+          const insideUntil = walker?.insideUntil ?? 0;
+
+          return (
+            <BuildingDialog
+              title={`🏠 ${character.name}の家`}
+              onClose={() => setOpenBuilding(null)}
+            >
+              <HouseInterior
+                character={character}
+                isHome={insideUntil > 0}
+                // 家に入るたびに，机で作業するかベッドで休むかが変わる
+                activity={
+                  Math.floor(insideUntil / 1000) % 2 === 0 ? "desk" : "bed"
+                }
+              />
+            </BuildingDialog>
+          );
+        })()}
     </section>
   );
 }
