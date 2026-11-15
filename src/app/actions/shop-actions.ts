@@ -1,6 +1,6 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { refresh, revalidatePath } from "next/cache";
 
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
@@ -80,6 +80,8 @@ export async function purchaseItemAction(
 
   revalidatePath("/shop");
   revalidatePath("/");
+  // 今開いているページも，最新の状態で表示し直す（Next.js 16 では明示が必要）
+  refresh();
 
   return {
     status: "success",
@@ -133,4 +135,6 @@ export async function equipItemAction(
 
   revalidatePath(`/repositories/${repositoryId}`);
   revalidatePath("/");
+  // 今開いているページも，最新の状態で表示し直す（Next.js 16 では明示が必要）
+  refresh();
 }
