@@ -14,6 +14,7 @@ import {
   EquipmentStateProvider,
   OptimisticEquipmentLayers,
 } from "@/components/items/equipment-state";
+import { BattleProfile } from "@/components/battle/battle-profile";
 import { EquipmentPicker } from "@/components/items/equipment-picker";
 import type { Inventory } from "@/data/inventory";
 
@@ -230,6 +231,11 @@ export function CharacterDetail({
         <EquipmentPicker
           character={character}
           inventory={inventory}
+        />
+
+        <BattleProfile
+          characterType={character.characterType}
+          level={character.level}
         />
       </div>
     </main>

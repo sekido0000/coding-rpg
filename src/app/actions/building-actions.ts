@@ -240,6 +240,10 @@ function getLotName(
     return "雑貨店";
   }
 
+  if (key === "dungeon_gate") {
+    return "ボス戦の入口";
+  }
+
   if (isBuildingId(key)) {
     return BUILDING_CATALOG[key].name;
   }

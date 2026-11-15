@@ -608,6 +608,143 @@ body {
   }
 }
 
+/* ---------- ボス戦 ---------- */
+
+/* 勝利済みの★に押すハンコ */
+.battle-stamp {
+  transform: rotate(-12deg);
+  animation: battle-stamp 0.45s cubic-bezier(0.3, 1.4, 0.6, 1) both;
+}
+
+@keyframes battle-stamp {
+  0% {
+    opacity: 0;
+    transform: rotate(-12deg) scale(1.8);
+  }
+  100% {
+    opacity: 1;
+    transform: rotate(-12deg) scale(1);
+  }
+}
+
+/* ボスがゆっくり浮き沈みする */
+.battle-idle {
+  animation: battle-idle 2.4s ease-in-out infinite;
+}
+
+@keyframes battle-idle {
+  50% {
+    transform: translateY(-6px);
+  }
+}
+
+/* 攻撃を受けて揺れる */
+.battle-shake {
+  animation: battle-shake 0.4s ease-in-out;
+}
+
+@keyframes battle-shake {
+  20% {
+    transform: translateX(-6px);
+  }
+  40% {
+    transform: translateX(6px);
+  }
+  60% {
+    transform: translateX(-4px);
+  }
+  80% {
+    transform: translateX(3px);
+  }
+}
+
+/* 行動する時に，相手のほうへ踏み込む（キャラクターは上へ，ボスは下へ） */
+.battle-lunge-up {
+  animation: battle-lunge-up 0.4s ease-out;
+}
+
+@keyframes battle-lunge-up {
+  40% {
+    transform: translateY(-10px) scale(1.08);
+  }
+}
+
+.battle-lunge-down {
+  animation: battle-lunge-down 0.45s ease-out;
+}
+
+@keyframes battle-lunge-down {
+  40% {
+    transform: translateY(12px) scale(1.08);
+  }
+}
+
+/* ダメージや回復の数字が浮かび上がって消える */
+.battle-float {
+  animation: battle-float 0.9s ease-out both;
+}
+
+@keyframes battle-float {
+  0% {
+    opacity: 0;
+    transform: translateY(8px) scale(0.8);
+  }
+  20% {
+    opacity: 1;
+    transform: translateY(-4px) scale(1.15);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-28px) scale(1);
+  }
+}
+
+/* 勝利・敗北の文字 */
+.battle-result {
+  animation: battle-stamp-in 0.5s cubic-bezier(0.3, 1.4, 0.6, 1) both;
+}
+
+@keyframes battle-stamp-in {
+  0% {
+    opacity: 0;
+    transform: scale(1.8);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* ボスの目や炎が，ゆっくり明るさを変えて光る */
+.boss-glow {
+  animation: boss-glow 1.6s ease-in-out infinite;
+}
+
+@keyframes boss-glow {
+  50% {
+    opacity: 0.55;
+  }
+}
+
+/* 倒れたボスが，沈みながら薄くなる */
+.battle-defeated {
+  animation: battle-defeated 0.9s ease-in both;
+}
+
+@keyframes battle-defeated {
+  20% {
+    transform: translateX(-4px);
+  }
+  40% {
+    transform: translateX(4px);
+  }
+  100% {
+    opacity: 0.25;
+    filter: grayscale(1);
+    transform: translateY(10px);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .repo-character-walk,
   .repo-character-float,
@@ -631,8 +768,27 @@ body {
   .companion-bob,
   .aura-twinkle,
   .aura-flicker,
-  .aura-spin {
+  .aura-spin,
+  .battle-stamp,
+  .battle-idle,
+  .battle-shake,
+  .battle-lunge-up,
+  .battle-lunge-down,
+  .battle-result,
+  .boss-glow {
     animation: none;
+  }
+
+  /* 倒れたボスは，動かさずに薄くする */
+  .battle-defeated {
+    animation: none;
+    opacity: 0.25;
+    filter: grayscale(1);
+  }
+
+  /* 数字は，動かさずに少しのあいだ表示する */
+  .battle-float {
+    animation: battle-fade 0.9s step-end both;
   }
 
   /* 湯気や煙は出さない */
@@ -658,5 +814,11 @@ body {
   .aura-rise {
     animation: none;
     opacity: 0.6;
+  }
+}
+
+@keyframes battle-fade {
+  100% {
+    opacity: 0;
   }
 }
