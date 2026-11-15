@@ -37,7 +37,7 @@ export default async function ShopPage() {
           </div>
 
           <p className="rounded-full border border-amber-300/40 bg-amber-300/10 px-4 py-1.5 text-lg font-bold text-amber-200">
-            💰 {inventory.gold} G
+            所持金 💰 {inventory.gold} G
           </p>
         </div>
 

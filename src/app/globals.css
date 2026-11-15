@@ -239,6 +239,94 @@ body {
     0 0 0 2px rgb(0 0 0 / 0.12);
 }
 
+/* ---------- 家の中 ---------- */
+
+/* 部屋の中を歩く：小さく弾む */
+.room-walk {
+  animation: room-walk 0.35s ease-in-out infinite;
+}
+
+/* 机でコードを書く：小刻みに揺れる */
+.room-typing {
+  animation: room-typing 0.25s ease-in-out infinite alternate;
+}
+
+/* 体をのばす：縦に伸び縮みする */
+.room-stretch {
+  animation: room-stretch 1.2s ease-in-out infinite;
+  transform-origin: center bottom;
+}
+
+/* 本がゆっくり上下する */
+.room-bob {
+  animation: room-bob 1.6s ease-in-out infinite;
+}
+
+/* 寝ている時の Z：右上へ浮かびながら消える */
+.room-zzz {
+  animation: room-zzz 2.4s ease-out infinite;
+  opacity: 0;
+}
+
+@keyframes room-walk {
+  0%,
+  100% {
+    translate: 0 0;
+  }
+  50% {
+    translate: 0 -6%;
+  }
+}
+
+@keyframes room-typing {
+  from {
+    translate: 0 0;
+  }
+  to {
+    translate: 0 -2%;
+  }
+}
+
+/*
+ * 左右の向き（Tailwind の -scale-x-100 は scale を使う）とぶつからないよう，
+ * transform で伸び縮みさせる．
+ */
+@keyframes room-stretch {
+  0%,
+  100% {
+    transform: scale(1, 1);
+  }
+  50% {
+    transform: scale(0.92, 1.1);
+  }
+}
+
+@keyframes room-bob {
+  0%,
+  100% {
+    translate: 0 0;
+  }
+  50% {
+    translate: 0 -4px;
+  }
+}
+
+@keyframes room-zzz {
+  0% {
+    opacity: 0;
+    translate: 0 0;
+    scale: 0.6;
+  }
+  25% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    translate: 18px -36px;
+    scale: 1.2;
+  }
+}
+
 /* ---------- 称号 ---------- */
 
 /* 金の称号：ときどき光の筋が横切る */
@@ -460,11 +548,21 @@ body {
   .world-level-up,
   .quest-stamp,
   .title-rainbow,
+  .room-walk,
+  .room-typing,
+  .room-stretch,
+  .room-bob,
   .companion-bob,
   .aura-twinkle,
   .aura-flicker,
   .aura-spin {
     animation: none;
+  }
+
+  /* 寝ている時の Z は，動かさずに表示しておく */
+  .room-zzz {
+    animation: none;
+    opacity: 1;
   }
 
   /* 光の筋は出さない */

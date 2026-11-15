@@ -117,3 +117,47 @@ describe("ワールドの広さと飾り", () => {
     );
   });
 });
+
+describe("キャラクターが歩く範囲", () => {
+  it("建物が建っているあたりだけを歩き，世界の端までは行かない", () => {
+    const map = buildWorldMap(ids(3));
+    const built = map.lots.filter((lot) => lot.kind !== "empty");
+
+    expect(map.walkMinX).toBeGreaterThan(map.roadMinX);
+    expect(map.walkMaxX).toBeLessThan(map.roadMaxX);
+
+    // すべての建物の扉が，歩く範囲の中にある
+    for (const lot of built) {
+      expect(lot.door.x).toBeGreaterThan(map.walkMinX);
+      expect(lot.door.x).toBeLessThan(map.walkMaxX);
+    }
+  });
+
+  it("歩く範囲の両端は，つなぎの道になっている", () => {
+    const map = buildWorldMap(ids(9));
+
+    expect(map.connectorXs).toContain(map.walkMinX);
+    expect(map.connectorXs).toContain(map.walkMaxX);
+  });
+
+  it("道順は，歩く範囲の外のつなぎの道を通らない", () => {
+    const map = buildWorldMap(ids(3));
+    const [roadA, roadB] = map.roadYs;
+
+    for (const x of [map.walkMinX, (map.walkMinX + map.walkMaxX) / 2, map.walkMaxX]) {
+      const route = planRoute(map, { x, y: roadA }, { x, y: roadB });
+
+      expect(route[0].x).toBeGreaterThanOrEqual(map.walkMinX);
+      expect(route[0].x).toBeLessThanOrEqual(map.walkMaxX);
+    }
+  });
+
+  it("キャラクターが増えると，歩く範囲も広がる", () => {
+    const small = buildWorldMap(ids(2));
+    const large = buildWorldMap(ids(20));
+
+    expect(large.walkMaxX - large.walkMinX).toBeGreaterThan(
+      small.walkMaxX - small.walkMinX,
+    );
+  });
+});
