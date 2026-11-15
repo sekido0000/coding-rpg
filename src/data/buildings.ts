@@ -1,33 +1,30 @@
 import "server-only";
 
 import { createClient } from "@/lib/supabase/server";
-import {
-  isBuildingId,
-  type PlacedBuilding,
-} from "@/lib/buildings/catalog";
+import { isLotKey, type Placement } from "@/lib/buildings/catalog";
 
 /*
- * 自分がワールドに建てた建物と，その場所．
+ * 自分のワールドの建物の場所（建てた建物と，移した家・掲示板・雑貨店）．
  * RLSで本人の行だけが返るので，ユーザーを指定せずに取る．
  */
-export async function getBuildings(): Promise<PlacedBuilding[]> {
+export async function getPlacements(): Promise<Placement[]> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("user_buildings")
     .select("building_id, lot_row, lot_offset");
 
-  // 建物が出せなくても，ワールドは表示する
+  // 場所が取れなくても，ワールドは（最初の並びで）表示する
   if (error) {
-    console.error("Failed to fetch buildings:", error);
+    console.error("Failed to fetch building placements:", error);
     return [];
   }
 
   return (data ?? []).flatMap((row) =>
-    isBuildingId(row.building_id) &&
+    isLotKey(row.building_id) &&
     (row.lot_row === 0 || row.lot_row === 1)
       ? [
           {
-            buildingId: row.building_id,
+            key: row.building_id,
             row: row.lot_row,
             offset: row.lot_offset,
           },

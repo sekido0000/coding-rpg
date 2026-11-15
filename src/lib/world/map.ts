@@ -8,9 +8,12 @@
  * ドラッグなどで見渡す．
  */
 
-import type {
-  BuildingId,
-  PlacedBuilding,
+import {
+  houseLotKey,
+  isBuildingId,
+  type BuildingId,
+  type LotKey,
+  type Placement,
 } from "@/lib/buildings/catalog";
 import type { Position } from "@/lib/world/movement";
 
@@ -68,6 +71,8 @@ export type Lot = {
   door: Position;
   // 真ん中（掲示板）の区画から何区画ずれているか（建物の場所として保存する値）
   offset: number;
+  // 移せる建物（家・掲示板・雑貨店・建てた建物）の時は，場所を保存する時の名前
+  key?: LotKey;
   // 家の時は，住んでいるキャラクター
   characterId?: string;
   // 建てた建物の時は，その建物
@@ -96,21 +101,26 @@ export type WorldMap = {
 };
 
 /*
- * キャラクターと建てた建物から地図を作る．
- * 掲示板と雑貨店を奥の列の真ん中に置き，建てた建物はその場所に置く．
- * 家は残りの区画に，真ん中から近い順に並べる．空いた区画には飾りを置く．
+ * キャラクターと，保存した建物の場所から地図を作る．
+ *
+ * 場所を保存した建物（建てた建物や，移した家・掲示板・雑貨店）は，その場所に置く．
+ * 掲示板と雑貨店は，移していなければ奥の列の真ん中に置く．
+ * 移していない家は，残りの区画に真ん中から近い順に並べる．空いた区画には飾りを置く．
  */
 export function buildWorldMap(
   characterIds: string[],
-  buildings: PlacedBuilding[] = [],
+  placements: Placement[] = [],
 ): WorldMap {
-  const lotCount = characterIds.length + 2 + buildings.length;
+  const purchasedCount = placements.filter((placement) =>
+    isBuildingId(placement.key),
+  ).length;
+  const lotCount = characterIds.length + 2 + purchasedCount;
   // 掲示板と雑貨店がちょうど真ん中に来るよう，列の数は偶数にする
   const needed = Math.ceil(lotCount / 2);
-  // 建てた建物が端にあっても収まる広さにする
+  // 場所を保存した建物が端にあっても収まる広さにする
   const farthest = Math.max(
     0,
-    ...buildings.map((building) => Math.abs(building.offset) + 1),
+    ...placements.map((placement) => Math.abs(placement.offset) + 1),
   );
   const columns = Math.max(
     MIN_COLUMNS,
@@ -134,40 +144,87 @@ export function buildWorldMap(
       a.column - b.column,
   );
 
-  // 掲示板と雑貨店は，奥の列の真ん中に左右に並べる
   const middle = Math.floor(center);
+
   type LotContent = {
     kind: LotKind;
+    key?: LotKey;
     characterId?: string;
     buildingId?: BuildingId;
   };
 
-  const fixed = new Map<string, LotContent>([
-    [`0-${middle}`, { kind: "quest_board" }],
-    [`0-${middle + 1}`, { kind: "general_store" }],
-  ]);
+  // 保存した場所の名前から，区画に置くものを決める．置かないもの（消えたキャラクターの家など）は null
+  const characterSet = new Set(characterIds);
+  const toContent = (key: LotKey): LotContent | null => {
+    if (key === "quest_board" || key === "general_store") {
+      return { kind: key, key };
+    }
 
-  // 建てた建物（掲示板や雑貨店の場所，地図の外の場所には置かない）
-  for (const building of buildings) {
-    const column = middle + building.offset;
-    const key = `${building.row}-${column}`;
+    if (isBuildingId(key)) {
+      return { kind: "building", key, buildingId: key };
+    }
 
-    if (column >= 0 && column < columns && !fixed.has(key)) {
-      fixed.set(key, { kind: "building", buildingId: building.buildingId });
+    const characterId = key.slice("house:".length);
+
+    return characterSet.has(characterId)
+      ? { kind: "house", key, characterId }
+      : null;
+  };
+
+  const occupied = new Map<string, LotContent>();
+
+  // 区画に置く．地図の外や，すでに何かがある区画には置かない
+  const placeAt = (row: number, offset: number, content: LotContent) => {
+    const column = middle + offset;
+    const slot = `${row}-${column}`;
+
+    if (column < 0 || column >= columns || occupied.has(slot)) {
+      return false;
+    }
+
+    occupied.set(slot, content);
+    return true;
+  };
+
+  // 場所を保存した建物
+  const placedKeys = new Set<LotKey>();
+
+  for (const placement of placements) {
+    const content = toContent(placement.key);
+
+    if (content && placeAt(placement.row, placement.offset, content)) {
+      placedKeys.add(placement.key);
     }
   }
 
-  const houses = characterIds.map((characterId) => ({
-    kind: "house" as const,
-    characterId,
-  }));
+  // 移していない掲示板と雑貨店は，奥の列の真ん中に左右に並べる
+  const waiting: LotContent[] = [];
+
+  for (const [key, offset] of [
+    ["quest_board", 0],
+    ["general_store", 1],
+  ] as const) {
+    if (!placedKeys.has(key) && !placeAt(0, offset, { kind: key, key })) {
+      // 真ん中がふさがっている時は，家と同じく空いた区画に置く
+      waiting.push({ kind: key, key });
+    }
+  }
+
+  // 移していない家は，残りの区画に真ん中から近い順に並べる
+  for (const characterId of characterIds) {
+    const key = houseLotKey(characterId);
+
+    if (!placedKeys.has(key)) {
+      waiting.push({ kind: "house", key, characterId });
+    }
+  }
 
   const lots: Lot[] = [];
 
   for (const { row, column } of slots) {
+    const slot = `${row}-${column}`;
     const content: LotContent =
-      fixed.get(`${row}-${column}`) ??
-      houses.shift() ?? { kind: "empty" };
+      occupied.get(slot) ?? waiting.shift() ?? { kind: "empty" };
 
     const x = (MARGIN_TILES + column * LOT_TILES + LOT_TILES / 2) * TILE;
     const { buildingBottom, road } = ROWS[row];
@@ -299,5 +356,24 @@ export function isBuildableLot(
   return map.lots.some(
     (lot) =>
       lot.row === row && lot.offset === offset && lot.kind === "empty",
+  );
+}
+
+/*
+ * 地図の上の位置（ピクセル）にある区画．建物をドラッグして離した場所を調べるのに使う．
+ * 区画の横幅の中で，建物の絵のあたり（正面の下端から上へ5マス，下へ1マス）にあれば，その区画とみなす．
+ */
+export function findLotAt(
+  map: WorldMap,
+  x: number,
+  y: number,
+): Lot | null {
+  return (
+    map.lots.find(
+      (lot) =>
+        Math.abs(x - lot.x) <= (LOT_TILES * TILE) / 2 &&
+        y >= lot.bottom - TILE * 5 &&
+        y <= lot.bottom + TILE,
+    ) ?? null
   );
 }

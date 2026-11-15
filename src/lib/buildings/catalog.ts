@@ -35,9 +35,9 @@ export type BuildingDefinition = {
 export const BUILDING_CATALOG: Record<BuildingId, BuildingDefinition> = {
   ramen_stall: {
     id: "ramen_stall",
-    name: "ラーメン屋台",
+    name: "ラーメン屋",
     icon: "🍜",
-    description: "カウンターで湯気の立つラーメンを食べる．",
+    description: "カウンターで湯気の立つラーメンを食べる．壁にはお品書きが並ぶ．",
     price: 150,
     isIndoor: true,
   },
@@ -107,9 +107,34 @@ export function isBuildingId(value: unknown): value is BuildingId {
   );
 }
 
-// 建てた建物と，その場所
-export type PlacedBuilding = {
-  buildingId: BuildingId;
+/*
+ * 場所を保存する建物の名前．
+ * - 建てた建物：建物の種類（cafe など）
+ * - 掲示板・雑貨店：quest_board・general_store
+ * - 家：house:キャラクターのID
+ */
+export type FixedLotKey = "quest_board" | "general_store";
+export type HouseLotKey = `house:${string}`;
+export type LotKey = BuildingId | FixedLotKey | HouseLotKey;
+
+export function houseLotKey(characterId: string): HouseLotKey {
+  return `house:${characterId}`;
+}
+
+// 移せる建物（家・掲示板・雑貨店・建てた建物）の名前か
+export function isLotKey(value: unknown): value is LotKey {
+  return (
+    isBuildingId(value) ||
+    value === "quest_board" ||
+    value === "general_store" ||
+    (typeof value === "string" &&
+      /^house:[0-9a-f-]{36}$/i.test(value))
+  );
+}
+
+// 建物の場所
+export type Placement = {
+  key: LotKey;
   // 何列目か（0：奥，1：手前）
   row: 0 | 1;
   // 真ん中（掲示板）の区画から何区画ずれているか．ワールドが広がっても場所が変わらないようにする

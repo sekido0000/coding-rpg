@@ -13,10 +13,7 @@ import {
   WINDOW,
   type Rect,
 } from "@/components/world/interiors";
-import {
-  BUILDING_CATALOG,
-  type BuildingId,
-} from "@/lib/buildings/catalog";
+import type { BuildingId } from "@/lib/buildings/catalog";
 import { getCharacterEvolution } from "@/lib/characters/catalog";
 import type { Character } from "@/types/character";
 
@@ -28,11 +25,16 @@ import type { Character } from "@/types/character";
 
 /* ---------- 家具 ---------- */
 
-// 長いカウンター（ラーメン屋台）
+/*
+ * 机やテーブルは，キャラクターの腰くらいの高さにする
+ * （キャラクターより高く見えないよう，脚を短くしてある）．
+ */
+
+// ラーメン屋のカウンター．キャラクターの後ろに置き，上にどんぶりが並ぶ
 const LONG_COUNTER: Rect[] = [
-  [0, 0, 60, 3, "#ca8a04"],
-  [0, 3, 60, 9, "#a16207"],
-  [0, 7, 60, 1, "#854d0e"],
+  [0, 0, 60, 2, "#ca8a04"],
+  [0, 2, 60, 5, "#a16207"],
+  [0, 4, 60, 1, "#854d0e"],
 ];
 
 // どんぶり
@@ -43,23 +45,20 @@ const BOWL: Rect[] = [
   [1, 1, 2, 1, "#f97316"],
 ];
 
-// のれん
-const NOREN: Rect[] = [
-  [0, 0, 40, 1, "#78350f"],
-  [1, 1, 12, 8, "#1e3a8a"],
-  [14, 1, 12, 8, "#1e3a8a"],
-  [27, 1, 12, 8, "#1e3a8a"],
-  [5, 3, 4, 4, "#f8fafc"],
-  [18, 3, 4, 4, "#f8fafc"],
-  [31, 3, 4, 4, "#f8fafc"],
+// 厨房の大きな寸胴鍋
+const STOCK_POT: Rect[] = [
+  [0, 0, 12, 2, "#94a3b8"],
+  [1, 2, 10, 8, "#cbd5e1"],
+  [1, 4, 10, 1, "#94a3b8"],
 ];
 
 // 丸いテーブルとカップ（カフェ）
 const CAFE_TABLE: Rect[] = [
-  [0, 0, 16, 3, "#f8fafc"],
-  [6, 3, 4, 9, "#78350f"],
-  [3, 12, 10, 2, "#451a03"],
   [3, -2, 3, 2, "#f8fafc"],
+  [10, -2, 3, 2, "#f8fafc"],
+  [0, 0, 16, 2, "#f8fafc"],
+  [6, 2, 4, 4, "#78350f"],
+  [3, 6, 10, 2, "#451a03"],
 ];
 
 // コーヒーメーカーの置かれた棚
@@ -74,50 +73,105 @@ const COFFEE_BAR: Rect[] = [
 
 // 読書机（図書館）
 const READING_DESK: Rect[] = [
-  [0, 0, 30, 3, "#a16207"],
-  [2, 3, 2, 8, "#78350f"],
-  [26, 3, 2, 8, "#78350f"],
   [6, -3, 6, 3, "#3b82f6"],
   [18, -2, 5, 2, "#22c55e"],
-  [24, -6, 3, 6, "#fde68a"],
+  [24, -5, 3, 5, "#fde68a"],
+  [0, 0, 30, 2, "#a16207"],
+  [2, 2, 2, 6, "#78350f"],
+  [26, 2, 2, 6, "#78350f"],
 ];
 
-// ゲーム機
-const ARCADE_MACHINE: Rect[] = [
-  [0, 0, 14, 24, "#312e81"],
-  [1, 1, 12, 3, "#f472b6"],
-  [2, 5, 10, 8, "#0f172a"],
-  [0, 14, 14, 3, "#4338ca"],
-  [3, 14, 2, 2, "#ef4444"],
-  [8, 14, 2, 2, "#22d3ee"],
-  [10, 14, 2, 2, "#facc15"],
+/*
+ * ゲーム機．種類ごとに色と画面を変えて，にぎやかに見せる．
+ * body：本体，marquee：上の看板，screen：画面に映るもの
+ */
+function arcadeMachine(
+  body: string,
+  marquee: string,
+  screen: Rect[],
+): Rect[] {
+  return [
+    [0, 0, 14, 24, body],
+    [1, 1, 12, 3, marquee],
+    [2, 5, 10, 8, "#0f172a"],
+    ...screen,
+    [0, 14, 14, 3, "#1e293b"],
+    [3, 14, 1, 2, "#e2e8f0"],
+    [2, 13, 3, 1, "#ef4444"],
+    [8, 14, 2, 2, "#facc15"],
+    [10, 14, 2, 2, "#22d3ee"],
+    [1, 20, 12, 1, "rgba(0,0,0,0.25)"],
+  ];
+}
+
+const ARCADE_MACHINES: Rect[][] = [
+  // 星の中を進むシューティング
+  arcadeMachine("#be123c", "#fde047", [
+    [3, 6, 1, 1, "#f8fafc"],
+    [9, 7, 1, 1, "#f8fafc"],
+    [5, 8, 1, 1, "#f8fafc"],
+    [6, 10, 3, 2, "#22d3ee"],
+    [7, 9, 1, 1, "#22d3ee"],
+    [4, 6, 2, 1, "#f472b6"],
+    [8, 6, 2, 1, "#4ade80"],
+  ]),
+  // 道を走るレース
+  arcadeMachine("#1d4ed8", "#f97316", [
+    [2, 5, 10, 3, "#38bdf8"],
+    [4, 8, 6, 5, "#475569"],
+    [6, 9, 1, 1, "#f8fafc"],
+    [7, 11, 1, 1, "#f8fafc"],
+    [5, 11, 2, 2, "#ef4444"],
+  ]),
+  // 積み上げるブロック
+  arcadeMachine("#15803d", "#a855f7", [
+    [3, 10, 2, 2, "#f472b6"],
+    [5, 11, 2, 1, "#facc15"],
+    [7, 10, 2, 2, "#22d3ee"],
+    [9, 11, 1, 1, "#4ade80"],
+    [6, 6, 2, 2, "#f97316"],
+  ]),
+];
+
+// クレーンゲーム（ぬいぐるみが入っている）
+const CLAW_MACHINE: Rect[] = [
+  [0, 0, 16, 3, "#f472b6"],
+  [1, 3, 14, 12, "#bae6fd"],
+  [7, 3, 1, 4, "#94a3b8"],
+  [5, 7, 5, 1, "#facc15"],
+  [2, 11, 3, 3, "#fde047"],
+  [6, 12, 3, 2, "#a78bfa"],
+  [10, 11, 3, 3, "#fb7185"],
+  [0, 15, 16, 9, "#db2777"],
+  [6, 17, 4, 3, "#1e293b"],
+  [1, 23, 14, 1, "rgba(0,0,0,0.25)"],
 ];
 
 // ごちそうの並んだテーブル（レストラン）
 const DINNER_TABLE: Rect[] = [
-  [0, 0, 32, 4, "#fef2f2"],
-  [0, 4, 32, 4, "#fecaca"],
-  [3, 8, 2, 8, "#78350f"],
-  [27, 8, 2, 8, "#78350f"],
   [4, -3, 8, 3, "#f8fafc"],
   [5, -4, 6, 1, "#f97316"],
   [20, -3, 8, 3, "#f8fafc"],
   [21, -4, 6, 1, "#16a34a"],
-  [15, -7, 2, 7, "#fef3c7"],
-  [15, -8, 2, 1, "#f59e0b"],
+  [15, -6, 2, 6, "#fef3c7"],
+  [15, -7, 2, 1, "#f59e0b"],
+  [0, 0, 32, 3, "#fef2f2"],
+  [0, 3, 32, 2, "#fecaca"],
+  [3, 5, 2, 4, "#78350f"],
+  [27, 5, 2, 4, "#78350f"],
 ];
 
 // 実験台とフラスコ（研究所）
 const LAB_BENCH: Rect[] = [
-  [0, 0, 40, 3, "#e2e8f0"],
-  [0, 3, 40, 10, "#94a3b8"],
-  [2, 5, 36, 1, "#64748b"],
   [4, -6, 4, 6, "#4ade80"],
   [5, -8, 2, 2, "#e2e8f0"],
   [14, -5, 5, 5, "#a855f7"],
   [15, -7, 3, 2, "#e2e8f0"],
   [26, -9, 6, 9, "#38bdf8"],
   [28, -11, 2, 2, "#e2e8f0"],
+  [0, 0, 40, 2, "#e2e8f0"],
+  [0, 2, 40, 6, "#94a3b8"],
+  [2, 4, 36, 1, "#64748b"],
 ];
 
 // 光る機械（研究所）
@@ -191,42 +245,60 @@ function Steam({ left, bottom }: { left: number; bottom: number }) {
   );
 }
 
+// ラーメン屋の壁に並ぶ，木のお品書き
+const RAMEN_MENU = ["醤油", "味噌", "塩", "豚骨", "餃子", "炒飯"];
+
+// ゲームセンターの天井の電飾の色
+const ARCADE_LIGHTS = [
+  "#f472b6",
+  "#22d3ee",
+  "#facc15",
+  "#4ade80",
+  "#f472b6",
+  "#22d3ee",
+  "#facc15",
+];
+
 const INTERIORS: Record<BuildingId, InteriorConfig> = {
   ramen_stall: {
-    wall: "linear-gradient(#7f1d1d, #991b1b)",
+    wall: "linear-gradient(#fef3c7, #fde68a)",
     floor: "repeating-linear-gradient(90deg, #57534e 0 30px, #44403c 30px 32px)",
     furniture: (
       <>
-        <Placed left={10} bottom={72} width={80}>
-          <Pixels width={40} height={9} rects={NOREN} />
+        {/* 奥の壁に並ぶお品書き */}
+        <div className="absolute inset-x-[6%] top-[6%] flex justify-between">
+          {RAMEN_MENU.map((item) => (
+            <span
+              key={item}
+              className="rounded-sm border-2 border-[#78350f] bg-[#d6a76c] px-1 py-1.5 text-[10px] font-black text-[#451a03] [writing-mode:vertical-rl] sm:px-1.5 sm:text-sm"
+            >
+              {item}
+            </span>
+          ))}
+        </div>
+        {/* 厨房の寸胴鍋 */}
+        <Placed left={78} bottom={44} width={10}>
+          <Pixels width={12} height={10} rects={STOCK_POT} />
         </Placed>
-        <div className="absolute left-[8%] top-[46%] rounded bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-red-800 sm:text-xs">
-          しょうゆ ¥600
-        </div>
-        <div className="absolute right-[8%] top-[46%] rounded bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-red-800 sm:text-xs">
-          みそ ¥700
-        </div>
-      </>
-    ),
-    front: (
-      <>
-        <Placed left={5} bottom={4} width={90}>
-          <Pixels width={60} height={12} rects={LONG_COUNTER} />
+        <Steam left={81} bottom={58} />
+        {/* カウンターとどんぶり（キャラクターの後ろ） */}
+        <Placed left={5} bottom={26} width={90}>
+          <Pixels width={60} height={7} rects={LONG_COUNTER} />
         </Placed>
         {[18, 40, 62].map((left) => (
           <span key={left}>
-            <Placed left={left} bottom={22} width={10}>
+            <Placed left={left} bottom={36} width={8}>
               <Pixels width={8} height={5} rects={BOWL} />
             </Placed>
-            <Steam left={left + 3} bottom={28} />
+            <Steam left={left + 2} bottom={42} />
           </span>
         ))}
       </>
     ),
     spots: [
-      { left: 16, bottom: 14, width: 13, motion: "room-typing" },
-      { left: 38, bottom: 14, width: 13, motion: "room-typing" },
-      { left: 60, bottom: 14, width: 13, motion: "room-typing" },
+      { left: 16, bottom: 6, width: 13, motion: "room-typing" },
+      { left: 38, bottom: 6, width: 13, motion: "room-typing" },
+      { left: 60, bottom: 6, width: 13, motion: "room-typing" },
     ],
     doing: "ラーメンを食べています",
   },
@@ -255,7 +327,7 @@ const INTERIORS: Record<BuildingId, InteriorConfig> = {
   },
   cafe: {
     wall: "repeating-linear-gradient(90deg, #fef3c7 0 24px, #fde68a 24px 48px)",
-    floor: "repeating-conic-gradient(#78350f 0 25%, #92400e 0 50%) 0 0 / 36px 36px",
+    floor: "repeating-linear-gradient(90deg, #92400e 0 40px, #7c2d12 40px 42px)",
     furniture: (
       <>
         <Placed left={40} bottom={66} width={16}>
@@ -271,11 +343,11 @@ const INTERIORS: Record<BuildingId, InteriorConfig> = {
     ),
     front: (
       <>
-        <Placed left={12} bottom={8} width={16}>
-          <Pixels width={16} height={14} rects={CAFE_TABLE} />
+        <Placed left={15} bottom={9} width={12}>
+          <Pixels width={16} height={8} rects={CAFE_TABLE} />
         </Placed>
-        <Placed left={44} bottom={8} width={16}>
-          <Pixels width={16} height={14} rects={CAFE_TABLE} />
+        <Placed left={47} bottom={9} width={12}>
+          <Pixels width={16} height={8} rects={CAFE_TABLE} />
         </Placed>
       </>
     ),
@@ -303,13 +375,13 @@ const INTERIORS: Record<BuildingId, InteriorConfig> = {
       </>
     ),
     front: (
-      <Placed left={30} bottom={10} width={40}>
-        <Pixels width={30} height={11} rects={READING_DESK} />
+      <Placed left={32} bottom={11} width={34}>
+        <Pixels width={30} height={8} rects={READING_DESK} />
       </Placed>
     ),
     spots: [
       { left: 33, bottom: 12, width: 12, motion: "repo-character-float" },
-      { left: 55, bottom: 12, width: 12, motion: "repo-character-float" },
+      { left: 53, bottom: 12, width: 12, motion: "repo-character-float" },
       { left: 8, bottom: 14, width: 12, motion: "room-walk" },
       { left: 80, bottom: 14, width: 12, motion: "repo-character-float" },
     ],
@@ -317,29 +389,50 @@ const INTERIORS: Record<BuildingId, InteriorConfig> = {
   },
   arcade: {
     wall: "linear-gradient(#1e1b4b, #312e81)",
-    floor: "repeating-conic-gradient(#1e1b4b 0 25%, #3730a3 0 50%) 0 0 / 32px 32px",
+    floor: "repeating-conic-gradient(#1e1b4b 0 25%, #312e81 0 50%) 0 0 / 32px 32px",
     furniture: (
       <>
-        {[6, 28, 50, 72].map((left, index) => (
-          <Placed key={left} left={left} bottom={26} width={14}>
-            <span className={`interior-screen block`} style={{ animationDelay: `${index * 0.4}s` }}>
-              <Pixels width={14} height={24} rects={ARCADE_MACHINE} />
+        {/* 天井の電飾 */}
+        <div className="absolute inset-x-0 top-[4%] flex justify-around">
+          {ARCADE_LIGHTS.map((color, index) => (
+            <span
+              key={index}
+              className="interior-screen block h-2 w-2 rounded-full sm:h-3 sm:w-3"
+              style={{
+                backgroundColor: color,
+                animationDelay: `${index * 0.2}s`,
+              }}
+            />
+          ))}
+        </div>
+        {/* 種類のちがうゲーム機と，クレーンゲーム */}
+        {ARCADE_MACHINES.map((machine, index) => (
+          <Placed key={index} left={6 + index * 22} bottom={26} width={14}>
+            <span
+              className="interior-screen block"
+              style={{ animationDelay: `${index * 0.4}s` }}
+            >
+              <Pixels width={14} height={24} rects={machine} />
             </span>
           </Placed>
         ))}
+        <Placed left={72} bottom={26} width={16}>
+          <Pixels width={16} height={24} rects={CLAW_MACHINE} />
+        </Placed>
       </>
     ),
     spots: [
       { left: 7, bottom: 8, width: 12, motion: "room-typing" },
       { left: 29, bottom: 8, width: 12, motion: "room-typing" },
       { left: 51, bottom: 8, width: 12, motion: "room-typing" },
-      { left: 73, bottom: 8, width: 12, motion: "room-typing" },
+      { left: 74, bottom: 8, width: 12, motion: "repo-character-float" },
     ],
     doing: "ゲームで遊んでいます",
   },
   restaurant: {
     wall: "repeating-linear-gradient(90deg, #fff1f2 0 20px, #ffe4e6 20px 40px)",
-    floor: "repeating-conic-gradient(#f8fafc 0 25%, #1e293b 0 50%) 0 0 / 40px 40px",
+    // 目が疲れないよう，落ち着いた木の床にする
+    floor: "repeating-linear-gradient(90deg, #a16207 0 48px, #92400e 48px 50px)",
     furniture: (
       <>
         <Placed left={20} bottom={64} width={16}>
@@ -352,11 +445,11 @@ const INTERIORS: Record<BuildingId, InteriorConfig> = {
     ),
     front: (
       <>
-        <Placed left={10} bottom={8} width={32}>
-          <Pixels width={32} height={16} rects={DINNER_TABLE} />
+        <Placed left={12} bottom={10} width={28}>
+          <Pixels width={32} height={9} rects={DINNER_TABLE} />
         </Placed>
-        <Placed left={56} bottom={8} width={32}>
-          <Pixels width={32} height={16} rects={DINNER_TABLE} />
+        <Placed left={58} bottom={10} width={28}>
+          <Pixels width={32} height={9} rects={DINNER_TABLE} />
         </Placed>
       </>
     ),
@@ -379,16 +472,22 @@ const INTERIORS: Record<BuildingId, InteriorConfig> = {
           </span>
         </Placed>
         <Placed left={78} bottom={38} width={16}>
-          <span className="interior-screen block" style={{ animationDelay: "0.6s" }}>
+          <span
+            className="interior-screen block"
+            style={{ animationDelay: "0.6s" }}
+          >
             <Pixels width={16} height={22} rects={LAB_MACHINE} />
           </span>
         </Placed>
-        <span aria-hidden="true" className="lab-smoke absolute left-[62%] bottom-[46%] block h-6 w-6 rounded-full bg-slate-300/80" />
+        <span
+          aria-hidden="true"
+          className="lab-smoke absolute bottom-[34%] left-[62%] block h-6 w-6 rounded-full bg-slate-300/80"
+        />
       </>
     ),
     front: (
-      <Placed left={26} bottom={8} width={48}>
-        <Pixels width={40} height={13} rects={LAB_BENCH} />
+      <Placed left={28} bottom={10} width={44}>
+        <Pixels width={40} height={8} rects={LAB_BENCH} />
       </Placed>
     ),
     spots: [
@@ -422,7 +521,6 @@ export function BuildingInterior({
   visitors,
 }: BuildingInteriorProps) {
   const config = INTERIORS[buildingId];
-  const building = BUILDING_CATALOG[buildingId];
   const shown = visitors.slice(0, config.spots.length);
 
   // カフェのおしゃべり．数秒ごとに話す人とセリフが変わる
@@ -494,7 +592,7 @@ export function BuildingInterior({
       <p className="absolute left-2 top-2 max-w-[70%] rounded-lg bg-slate-950/75 px-2.5 py-1 text-xs font-bold text-white sm:left-3 sm:top-3 sm:text-sm">
         {shown.length > 0
           ? `${shown.map((character) => character.name).join("・")}は${config.doing}`
-          : `${building.icon} いまは誰もいません．しばらくすると誰か来るかもしれません`}
+          : "いまは誰もいません．しばらくすると誰か来るかもしれません"}
       </p>
     </Room>
   );

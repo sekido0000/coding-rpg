@@ -9,7 +9,7 @@ import { TitleBadge } from "@/components/titles/title-badge";
 import { WorldHome } from "@/components/world/world-home";
 import { getSelectedTitle } from "@/data/titles";
 import { getInventory } from "@/data/inventory";
-import { getBuildings } from "@/data/buildings";
+import { getPlacements } from "@/data/buildings";
 import { signOutAction } from "@/app/actions/auth-actions";
 import { createClient } from "@/lib/supabase/server";
 import { SignOutButton } from "@/components/auth/sign-out-button";
@@ -65,7 +65,7 @@ export default async function Home() {
     questBoard,
     selectedTitle,
     inventory,
-    buildings,
+    placements,
   ] = await Promise.all([
     getCharacters(),
     getRepositoriesAwaitingCharacter(),
@@ -73,7 +73,7 @@ export default async function Home() {
     getWeeklyQuestBoard(),
     getSelectedTitle(),
     getInventory(),
-    getBuildings(),
+    getPlacements(),
   ]);
 
   const githubName =
@@ -168,7 +168,7 @@ export default async function Home() {
           worldActivity={worldActivity}
           hasPendingRewards={questBoard.hasPendingRewards}
           inventory={inventory}
-          buildings={buildings}
+          placements={placements}
         />
       </div>
     </main>

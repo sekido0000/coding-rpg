@@ -219,9 +219,27 @@ type HouseInteriorProps = {
   character: Character;
   // キャラクターが家の中にいる時は true
   isHome: boolean;
+  // 遊びに来ているほかのキャラクター
+  guests: Character[];
   // 家に入るたびに変わる数．最初にいる場所を決めるのに使う
   seed: number;
 };
+
+// 遊びに来たキャラクターが立つ場所（じゅうたんのあたり）
+const GUEST_SPOTS = [
+  { left: 34, bottom: 4, width: 12 },
+  { left: 50, bottom: 3, width: 12 },
+  { left: 24, bottom: 2, width: 12 },
+];
+
+// 遊びに来たキャラクターのセリフ
+const GUEST_TALK = [
+  "遊びに来たよ！",
+  "いい部屋だね",
+  "おじゃましてます",
+  "今日は何してたの？",
+  "ここ落ち着く〜",
+];
 
 /*
  * 家の中．キャラクターが家にいる時は，机・本棚・窓・じゅうたん・ベッドを
@@ -230,6 +248,7 @@ type HouseInteriorProps = {
 export function HouseInterior({
   character,
   isHome,
+  guests,
   seed,
 }: HouseInteriorProps) {
   const evolution = getCharacterEvolution(
@@ -282,6 +301,23 @@ export function HouseInterior({
   const place = ROOM_SPOTS[spot];
   const doing = isWalking ? null : spot;
 
+  // 遊びに来たキャラクターのおしゃべり．数秒ごとに話す人とセリフが変わる
+  const [guestTalk, setGuestTalk] = useState(0);
+  const hasGuests = guests.length > 0;
+
+  useEffect(() => {
+    if (!hasGuests) {
+      return;
+    }
+
+    const timer = window.setInterval(
+      () => setGuestTalk((index) => index + 1),
+      3500,
+    );
+
+    return () => window.clearInterval(timer);
+  }, [hasGuests]);
+
   return (
     <div className="space-y-4">
       <Room
@@ -297,7 +333,8 @@ export function HouseInterior({
         <Placed left={5} bottom={6} width={28}>
           <Pixels width={24} height={12} rects={BED} />
         </Placed>
-        <Placed left={66} bottom={20} width={24}>
+        {/* 机は，キャラクターと同じ床の高さに置く（浮いて高く見えないように） */}
+        <Placed left={68} bottom={13} width={22}>
           <Pixels width={20} height={20} rects={DESK} />
         </Placed>
         <Placed left={90} bottom={44} width={7}>
@@ -376,11 +413,54 @@ export function HouseInterior({
           </div>
         )}
 
-        {/* 家にいる時は，何をしているかを部屋の左上に出す */}
-        {isHome && (
-          <p className="absolute left-2 top-2 rounded-lg bg-slate-950/75 px-2.5 py-1 text-xs font-bold text-white sm:left-3 sm:top-3 sm:text-sm">
-            {character.name}は
-            {doing ? place.label : "歩いています"}
+        {/* 遊びに来ているキャラクター．順番に話す */}
+        {guests.slice(0, GUEST_SPOTS.length).map((guest, index) => {
+          const spot = GUEST_SPOTS[index];
+          const guestEvolution = getCharacterEvolution(
+            guest.characterType,
+            guest.level,
+          );
+
+          return (
+            <div
+              key={guest.id}
+              className="absolute"
+              style={{
+                left: `${spot.left}%`,
+                bottom: `${spot.bottom}%`,
+                width: `${spot.width}%`,
+              }}
+            >
+              {guestTalk % guests.length === index && (
+                <span className="absolute bottom-full left-1/2 z-10 mb-1 -translate-x-1/2 whitespace-nowrap rounded-xl bg-emerald-50 px-2 py-1 text-[10px] font-bold text-emerald-950 shadow ring-2 ring-emerald-400 sm:text-xs">
+                  {GUEST_TALK[guestTalk % GUEST_TALK.length]}
+                </span>
+              )}
+              <Image
+                src={guestEvolution.imagePath}
+                alt={guest.name}
+                width={128}
+                height={128}
+                className="repo-pixel-image repo-character-float block h-auto w-full"
+              />
+            </div>
+          );
+        })}
+
+        {/* 何をしているかを部屋の左上に出す */}
+        {(isHome || guests.length > 0) && (
+          <p className="absolute left-2 top-2 max-w-[75%] rounded-lg bg-slate-950/75 px-2.5 py-1 text-xs font-bold text-white sm:left-3 sm:top-3 sm:text-sm">
+            {isHome && (
+              <span className="block">
+                {character.name}は
+                {doing ? place.label : "歩いています"}
+              </span>
+            )}
+            {guests.length > 0 && (
+              <span className="block text-emerald-200">
+                {guests.map((guest) => guest.name).join("・")}が遊びに来ています
+              </span>
+            )}
           </p>
         )}
 
