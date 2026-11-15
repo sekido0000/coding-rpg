@@ -6,6 +6,8 @@ import {
   type ChangedFile,
 } from "@/lib/growth/xp";
 import { addXp } from "@/lib/growth/level";
+import { grantQuestRewards } from "@/lib/quests/grant-rewards";
+import { getWeekStart } from "@/lib/quests/weekly";
 import {
   getCharacterEvolution,
   isCharacterType,
@@ -444,4 +446,35 @@ export async function updateCharacter(
   console.log(
     `Repository ${repository.name}: +${gainedXp} XP`,
   );
+
+  /*
+   * 週のクエストの報酬を渡す．
+   * コミットした日時の週で数えるので，月曜の朝に先週のコミットを
+   * push した時は，先週のクエストとして判定する．
+   *
+   * 経験値はもう書き込んだので，ここで失敗しても例外は投げない
+   * （再送されると経験値が二重に入るため）．
+   * 報酬は毎回計算し直すので，次の push で渡し直せる．
+   */
+  const weekStarts = new Set(
+    commitEvents.map((event) =>
+      getWeekStart(new Date(event.created_at)),
+    ),
+  );
+
+  for (const weekStart of weekStarts) {
+    try {
+      const gold = await grantQuestRewards(
+        supabase,
+        repository.user_id,
+        weekStart,
+      );
+
+      if (gold > 0) {
+        console.log(`Quest rewards: +${gold} G`);
+      }
+    } catch (error) {
+      console.error("Failed to grant quest rewards:", error);
+    }
+  }
 }
