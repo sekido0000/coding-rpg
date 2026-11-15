@@ -168,7 +168,7 @@ export function WorkshopView({
         </h2>
         {shownGear.length === 0 ? (
           <p className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4 text-sm text-slate-400">
-            まだ装備を持っていません．ボス戦で素材を集めて，下から作ってみましょう．
+            まだ装備を持っていません．
           </p>
         ) : (
           <ul className="grid gap-3 md:grid-cols-2">
@@ -263,13 +263,9 @@ export function WorkshopView({
 
       {/* 作る */}
       <section aria-labelledby="craft-gear">
-        <h2 id="craft-gear" className="mb-1 text-lg font-black text-white">
+        <h2 id="craft-gear" className="mb-3 text-lg font-black text-white">
           装備を作る
         </h2>
-        <p className="mb-3 text-xs text-slate-400">
-          ボスの素材で作った装備は，別のボスに有効です（武器は与えるダメージが増え，防具は受けるダメージが減ります）．
-          伝説の装備はレア素材だけで作れ，ステータスが大きく上がります．
-        </p>
 
         <div role="tablist" className="mb-4 flex flex-wrap gap-2">
           {TABS.map(({ id, label }) => (

@@ -1,3 +1,4 @@
+import { EVOLUTION_DESCRIPTIONS } from "./evolution-descriptions.mjs";
 import { mkdir, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 
@@ -63,7 +64,9 @@ function toGeneratedCatalogSource() {
       level: index + 1,
       name,
       imagePath: `/characters/${definition.type}/level-${index + 1}.svg`,
-      description: STAGE_DESCRIPTIONS[index],
+      description:
+        EVOLUTION_DESCRIPTIONS[definition.type]?.[index] ??
+        STAGE_DESCRIPTIONS[index],
     }));
 
     return `  ${quote(definition.type)}: {
