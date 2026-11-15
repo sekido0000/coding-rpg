@@ -1041,10 +1041,11 @@ export function RepositoryWorld({
           </button>
         )}
 
-        {/* 移す先を選んでいる時だけ，案内を出す */}
-        {isBuildMode && buildAction?.kind === "move" && (
+        {isBuildMode && (
           <p className="max-w-64 rounded-lg bg-slate-950/85 px-3 py-1.5 text-right text-xs text-amber-100 shadow">
-            {getKeyLabel(buildAction.key)}を移す先の区画を押してください
+            {buildAction?.kind === "move"
+              ? `${getKeyLabel(buildAction.key)}を移す先の区画を押してください`
+              : "建物はドラッグで移せます"}
           </p>
         )}
 
