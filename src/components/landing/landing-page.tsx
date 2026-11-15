@@ -59,6 +59,10 @@ export function LandingPage() {
             <span className="inline-block">何のための変更か伝わる</span>
             <span className="inline-block">コミットをするほど，</span>
             <span className="inline-block">キャラクターが大きく成長します．</span>
+            <br />
+            <span className="inline-block">育てたキャラクターで，</span>
+            <span className="inline-block">ワールドを広げたり，</span>
+            <span className="inline-block">ボスに挑んだりもできます．</span>
           </p>
 
           <a

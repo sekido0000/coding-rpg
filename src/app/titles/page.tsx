@@ -35,7 +35,7 @@ export default async function TitlesPage() {
         <div className="mb-8">
           <h1 className="text-3xl font-black text-white">🏅 称号</h1>
           <p className="mt-2 text-sm text-slate-400">
-            集めた称号から1つ選ぶと，ワールドの画面の上に表示されます．もらった称号は消えません．
+            選んだ称号がユーザー名の隣に表示されます．もらった称号は消えません．
             （{earnedCount} / {totalCount} 個）
           </p>
         </div>

@@ -1,8 +1,9 @@
+import { AfterGrowth } from "@/components/guide/after-growth";
 import { UsageSteps } from "@/components/guide/usage-steps";
 import { XpRules } from "@/components/guide/xp-rules";
 
 /*
- * 「使い方」と「経験値のルール」．
+ * 「使い方」「経験値のルール」「育てたキャラクターで」．
  * トップページと使い方ページで同じ内容を表示するため，1つにまとめる．
  */
 export function GuideSections() {
@@ -30,6 +31,18 @@ export function GuideSections() {
         </h2>
 
         <XpRules />
+      </section>
+
+      <section className="mb-16">
+        <h2 className="mb-3 text-3xl font-black text-white">
+          育てたキャラクターで
+        </h2>
+
+        <p className="mb-8 text-slate-400">
+          コミットを続けていると，できることが増えていきます．
+        </p>
+
+        <AfterGrowth />
       </section>
     </>
   );

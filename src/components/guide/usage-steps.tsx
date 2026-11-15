@@ -19,6 +19,8 @@ type UsageStep = {
   image: string;
   imageWidth: number;
   imageHeight: number;
+  // 縦長の画像は，この幅（px）まで小さくして表示する
+  displayWidth?: number;
   highlights: Highlight[];
 };
 
@@ -27,16 +29,23 @@ const steps: UsageStep[] = [
     number: "STEP 1",
     title: "リポジトリの連携を始める",
     description:
-      "GitHubでログインすると，ホーム画面が表示されます．右上のボタンから，キャラクターを育てたいリポジトリの連携を始めます．",
+      "GitHubでログインすると，ワールドが表示されます．上の「キャラクター」からキャラクター一覧を開き，育てたいリポジトリの連携を始めます．",
     image: "/screenshots/step1.png",
-    imageWidth: 1773,
-    imageHeight: 408,
+    imageWidth: 1280,
+    imageHeight: 418,
     highlights: [
       {
-        left: 61.5,
-        top: 8.2,
-        width: 19,
-        height: 17.2,
+        left: 64.8,
+        top: 6.5,
+        width: 9.7,
+        height: 11,
+        caption: "上の「キャラクター」を押す",
+      },
+      {
+        left: 71.3,
+        top: 64.6,
+        width: 15.7,
+        height: 11.5,
         caption: "「リポジトリの追加・連携解除」を押す",
       },
     ],
@@ -70,23 +79,37 @@ const steps: UsageStep[] = [
     number: "STEP 3",
     title: "キャラクターを選ぶ",
     description:
-      "アプリに戻ると，キャラクターの選択画面が表示されます．選んだキャラクターは後から変更できません．",
+      "アプリに戻ると，キャラクターの選択画面が表示されます．キャラクター・性格・名前は後から変更できません．",
     image: "/screenshots/step3.png",
-    imageWidth: 1869,
-    imageHeight: 775,
+    imageWidth: 1000,
+    imageHeight: 859,
     highlights: [
       {
-        left: 27.2,
-        top: 34.6,
-        width: 69.8,
-        height: 12.9,
-        caption: "一覧から好きなキャラクターを選ぶ",
+        left: 27.1,
+        top: 28.8,
+        width: 67.8,
+        height: 7.1,
+        caption: "好きなキャラクターを選ぶ",
       },
       {
-        left: 27.2,
-        top: 79.4,
-        width: 69.8,
-        height: 13.9,
+        left: 27.1,
+        top: 48.9,
+        width: 67.8,
+        height: 22.8,
+        caption: "性格を選ぶ",
+      },
+      {
+        left: 27.1,
+        top: 76.4,
+        width: 67.8,
+        height: 7.2,
+        caption: "名前を付ける",
+      },
+      {
+        left: 27.1,
+        top: 87.1,
+        width: 67.8,
+        height: 7,
         caption: "「このキャラクターに決定」を押す",
       },
     ],
@@ -97,22 +120,30 @@ const steps: UsageStep[] = [
     description:
       "連携したリポジトリにpushすると，コミットの内容に応じて経験値が入り，キャラクターが成長します．",
     image: "/screenshots/step4.png",
-    imageWidth: 1759,
-    imageHeight: 768,
+    imageWidth: 560,
+    imageHeight: 930,
+    displayWidth: 380,
     highlights: [
       {
-        left: 62.1,
-        top: 1.6,
-        width: 7,
-        height: 16.1,
-        caption: "経験値が貯まるとレベルが上がり，進化する",
+        left: 81.1,
+        top: 33.9,
+        width: 11.2,
+        height: 4.3,
+        caption: "経験値が貯まるとレベルが上がる",
       },
       {
-        left: 78.3,
-        top: 15,
-        width: 19.5,
-        height: 26.4,
-        caption: "成長履歴で，どのコミットで何XP得たか振り返れる",
+        left: 7.7,
+        top: 51.1,
+        width: 84.6,
+        height: 8.1,
+        caption: "決まったレベルで進化する",
+      },
+      {
+        left: 7.7,
+        top: 84.9,
+        width: 84.6,
+        height: 5.8,
+        caption: "「詳細情報」で，どのコミットで何XP得たか振り返れる",
       },
     ],
   },
@@ -160,7 +191,10 @@ export function UsageSteps() {
             </div>
 
             <div className="overflow-hidden rounded-2xl border border-slate-700 bg-slate-900 p-3 lg:col-span-3">
-              <div className="relative">
+              <div
+                className="relative mx-auto"
+                style={{ maxWidth: step.displayWidth }}
+              >
                 <Image
                   src={step.image}
                   alt={step.title}

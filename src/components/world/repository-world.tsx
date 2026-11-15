@@ -24,6 +24,7 @@ import {
   HOUSE_COLORS,
   House,
   DungeonGate,
+  Workshop,
   GeneralStore,
   QuestBoardSign,
   Tree,
@@ -239,6 +240,8 @@ function LotArt({
       return <GeneralStore />;
     case "dungeon_gate":
       return <DungeonGate />;
+    case "workshop":
+      return <Workshop />;
     case "building": {
       const Exterior = BUILDING_EXTERIORS[lot.buildingId!];
 
@@ -294,6 +297,8 @@ function getLotLabel(lot: Lot, owner?: Character) {
       return "🏪 雑貨店";
     case "dungeon_gate":
       return "⚔️ ボスに挑む";
+    case "workshop":
+      return "🔨 工房";
     case "building": {
       const building = BUILDING_CATALOG[lot.buildingId!];
 
@@ -430,7 +435,7 @@ function LotBuilding({
 
   const label = getLotLabel(lot, owner);
 
-  // ふだん押した時に開く画面（掲示板はクエストのパネル，ダンジョンの入口はボス戦のページ）
+  // ふだん押した時に開く画面（掲示板はクエストのパネル，ダンジョンの入口はボス戦のページ，工房は工房のページ）
   const open = () => {
     if (lot.kind === "house" && owner) {
       onOpen({ kind: "house", characterId: owner.id });
@@ -442,6 +447,8 @@ function LotBuilding({
       openQuestPanel();
     } else if (lot.kind === "dungeon_gate") {
       startNavigation(() => router.push("/battle"));
+    } else if (lot.kind === "workshop") {
+      startNavigation(() => router.push("/workshop"));
     }
   };
 
@@ -461,6 +468,8 @@ function LotBuilding({
           ? `${label}（ドラッグで移す・押すと移す/取り壊す）`
           : lot.kind === "dungeon_gate"
             ? `${label}（ボス戦のページへ）`
+            : lot.kind === "workshop"
+              ? `${label}（工房のページへ）`
             : `${label}（中をのぞく）`
       }
       className={`${base} ${clickable} ${
@@ -1036,7 +1045,7 @@ export function RepositoryWorld({
           <p className="max-w-64 rounded-lg bg-slate-950/85 px-3 py-1.5 text-right text-xs text-amber-100 shadow">
             {buildAction?.kind === "move"
               ? `${getKeyLabel(buildAction.key)}を移す先の区画を押してください`
-              : "光っている区画を押すと建てられます．建物はドラッグで移せます．押すと，移したり取り壊したりもできます"}
+              : "建物はドラッグで移せます"}
           </p>
         )}
 
