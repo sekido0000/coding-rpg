@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import type { ReactNode } from "react";
+import { useRef, type ReactNode } from "react";
 
 import { EquipmentLayers } from "@/components/items/equipment-layers";
 import { CompanionSprite } from "@/components/items/companion-sprite";
@@ -67,18 +67,22 @@ function Placed({
   );
 }
 
-// 部屋の壁と床．wall と floor は CSS の背景
+// 部屋の壁と床．wall と floor は CSS の背景．aspect は部屋の縦横の比
 function Room({
   wall,
   floor,
+  aspect = "aspect-[16/9]",
   children,
 }: {
   wall: string;
   floor: string;
+  aspect?: string;
   children: ReactNode;
 }) {
   return (
-    <div className="relative aspect-[16/9] w-full overflow-hidden rounded-xl border-4 border-[#3b2412] bg-[#3b2412]">
+    <div
+      className={`relative w-full overflow-hidden rounded-xl border-4 border-[#3b2412] bg-[#3b2412] ${aspect}`}
+    >
       <div className="absolute inset-x-0 top-0 h-[42%]" style={{ background: wall }} />
       <div className="absolute inset-x-0 bottom-0 h-[58%]" style={{ background: floor }} />
       {/* 壁と床の境目（幅木） */}
@@ -249,30 +253,35 @@ export function HouseInterior({
             )}
           </div>
         ) : (
-          <div className="absolute inset-x-0 bottom-[30%] flex justify-center">
-            <p className="rounded-lg bg-slate-950/75 px-3 py-1.5 text-sm font-bold text-white">
-              {character.name}は出かけています
+          <div className="absolute inset-x-0 bottom-[30%] flex justify-center px-4">
+            <p className="rounded-lg bg-slate-950/80 px-4 py-2 text-center text-sm text-white">
+              <span className="block font-bold">
+                {character.name}は出かけています
+              </span>
+              <span className="mt-0.5 block text-xs text-slate-300">
+                しばらくすると帰ってくるかもしれません
+              </span>
             </p>
           </div>
         )}
-      </Room>
 
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="text-sm text-slate-300">
-          {isHome
-            ? activity === "desk"
+        {/* 家にいる時は，何をしているかを部屋の左上に出す */}
+        {isHome && (
+          <p className="absolute left-2 top-2 rounded-lg bg-slate-950/75 px-2.5 py-1 text-xs font-bold text-white sm:left-3 sm:top-3 sm:text-sm">
+            {activity === "desk"
               ? `${character.name}は机でコードを書いています`
-              : `${character.name}はベッドで休んでいます`
-            : "しばらくすると帰ってくるかもしれません"}
-        </p>
+              : `${character.name}はベッドで休んでいます`}
+          </p>
+        )}
 
+        {/* 詳細画面への入口は，部屋の右上に置く（部屋の下に何も残さない） */}
         <PendingLink
           href={`/repositories/${character.repositoryId}`}
-          className="rounded-xl border border-emerald-400/30 bg-emerald-400/10 px-4 py-2 text-sm font-semibold text-emerald-200 transition hover:bg-emerald-400/20"
+          className="absolute bottom-2 right-2 rounded-lg border border-emerald-300/50 bg-slate-950/80 px-2.5 py-1 text-xs font-semibold text-emerald-200 transition hover:bg-slate-900 sm:bottom-3 sm:right-3 sm:text-sm"
         >
-          {character.name}の詳細を見る
+          詳細を見る →
         </PendingLink>
-      </div>
+      </Room>
     </div>
   );
 }
@@ -285,14 +294,22 @@ export function StoreInterior({ inventory }: { inventory: Inventory }) {
     (id) => ITEM_CATALOG[id].slot === "companion",
   );
 
+  // 品物の一覧（部屋の下）．「品物を見る」を押すと，ここまで動かす
+  const listRef = useRef<HTMLDivElement>(null);
+
   return (
-    <div className="space-y-5">
+    <div className="space-y-4">
+      {/*
+       * 部屋は低めにして，開いた時に下の品物の見出しまで見えるようにする．
+       * 下に品物があると分かるよう，部屋の中にも「品物を見る」ボタンを置く．
+       */}
       <Room
         wall="repeating-linear-gradient(90deg, #d9f99d 0 20px, #bef264 20px 40px)"
         floor="repeating-conic-gradient(#e7d3b0 0 25%, #d6bf96 0 50%) 0 0 / 40px 40px"
+        aspect="aspect-[16/7]"
       >
         {/* 棚と，飾ってある品物 */}
-        <Placed left={6} bottom={50} width={40}>
+        <Placed left={6} bottom={46} width={32}>
           <Pixels width={30} height={15} rects={SHELF} />
           <div className="absolute inset-x-[4%] top-[4%] flex justify-around">
             {displayed.slice(0, 3).map((id) => (
@@ -319,22 +336,37 @@ export function StoreInterior({ inventory }: { inventory: Inventory }) {
         <Placed left={50} bottom={4} width={44}>
           <Pixels width={40} height={17} rects={COUNTER} />
         </Placed>
-        <div className="absolute left-[52%] top-[18%] rounded-xl bg-white px-3 py-1.5 text-xs font-bold text-slate-900 shadow-lg sm:text-sm">
+        <div className="absolute left-[50%] top-[8%] rounded-xl bg-white px-3 py-1.5 text-xs font-bold text-slate-900 shadow-lg sm:text-sm">
           いらっしゃい！ゆっくり見ていってね
           <span className="absolute left-[60%] top-full border-x-[6px] border-t-[6px] border-x-transparent border-t-white" />
         </div>
+
+        <button
+          type="button"
+          onClick={() =>
+            listRef.current?.scrollIntoView({ behavior: "smooth" })
+          }
+          className="absolute bottom-3 left-3 animate-bounce rounded-xl bg-amber-300 px-3 py-1.5 text-sm font-bold text-slate-950 shadow-lg transition hover:bg-amber-200 motion-reduce:animate-none"
+        >
+          🛍️ 品物を見る ▼
+        </button>
       </Room>
 
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="text-sm text-slate-300">
-          買った装備は，キャラクターの詳細ページの「装備」から付けられます．
-        </p>
-        <p className="rounded-full border border-amber-300/40 bg-amber-300/10 px-3 py-1 text-sm font-bold text-amber-200">
-          💰 {inventory.gold} G
-        </p>
-      </div>
+      <div ref={listRef} className="scroll-mt-4 border-t border-slate-700 pt-4">
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h3 className="text-lg font-bold text-white">🛍️ 品物</h3>
+            <p className="mt-0.5 text-xs text-slate-400">
+              買った装備は，キャラクターの詳細ページの「装備」から付けられます．
+            </p>
+          </div>
+          <p className="rounded-full border border-amber-300/40 bg-amber-300/10 px-3 py-1 text-sm font-bold text-amber-200">
+            💰 {inventory.gold} G
+          </p>
+        </div>
 
-      <ShopItemList inventory={inventory} compact />
+        <ShopItemList inventory={inventory} compact />
+      </div>
     </div>
   );
 }
