@@ -25,9 +25,11 @@ export async function createCharacterAction(
   const characterType =
     formData.get("characterType");
 
+  // 作成後に戻るページ．決まったページだけを許す
+  const returnToValue = formData.get("returnTo");
   const returnTo =
-    formData.get("returnTo") === "/"
-      ? "/"
+    returnToValue === "/" || returnToValue === "/characters"
+      ? returnToValue
       : "/characters/setup";
 
   if (
@@ -176,6 +178,7 @@ export async function createCharacterAction(
   }
 
   revalidatePath("/");
+  revalidatePath("/characters");
   revalidatePath("/characters/setup");
   redirect(returnTo);
 }
