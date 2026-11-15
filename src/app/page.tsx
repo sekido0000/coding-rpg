@@ -41,7 +41,7 @@ function HudLink({
 }
 
 /*
- * ホーム．ログイン後は，リポジトリワールド（村）を画面いっぱいに表示する．
+ * ホーム．ログイン後は，リポジトリワールドを画面いっぱいに表示する．
  * 上の帯に，称号・ゴールドと，各ページやクエストへの入口を置く．
  */
 export default async function Home() {
@@ -153,12 +153,13 @@ export default async function Home() {
         </div>
       )}
 
-      {/* 村（残りの高さいっぱい） */}
+      {/* ワールド（残りの高さいっぱい） */}
       <div className="relative min-h-0 flex-1">
         <WorldHome
           key={worldKey}
           characters={characters}
           worldActivity={worldActivity}
+          hasPendingRewards={questBoard.hasPendingRewards}
         />
       </div>
     </main>

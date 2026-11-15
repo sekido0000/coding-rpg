@@ -49,7 +49,7 @@ export default async function CharactersPage() {
               href="/"
               className="rounded-xl border border-slate-700 px-4 py-2 text-sm font-semibold text-slate-300 transition hover:border-slate-500 hover:text-white"
             >
-              村へ戻る
+              ワールドへ戻る
             </PendingLink>
           </div>
         </div>
