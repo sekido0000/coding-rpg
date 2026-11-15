@@ -1,28 +1,15 @@
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { RealtimeChannel } from "@supabase/supabase-js";
-import { PendingLink } from "@/components/ui/pending-link";
-import { CharacterCard } from "@/components/characters/character-card";
-import { CharacterSetupForm } from "@/components/characters/character-setup-form";
-import { RepositoryWorld } from "@/components/world/repository-world";
-import type { RepositoryAwaitingCharacter } from "@/data/repositories";
-import type { ActivitySummary } from "@/lib/world/activity";
+
+import { toItemId } from "@/lib/items/catalog";
+import { createClient } from "@/lib/supabase/client";
 import type {
   Character,
   CharacterPersonality,
 } from "@/types/character";
-import { createClient } from "@/lib/supabase/client";
-import { toItemId } from "@/lib/items/catalog";
-
-type CharacterDashboardProps = {
-  characters: Character[];
-  pendingRepositories: RepositoryAwaitingCharacter[];
-  worldActivity: Record<string, ActivitySummary>;
-  // 今週のクエスト（サーバーで作った表示を受け取る）
-  questBoard: ReactNode;
-};
 
 /*
  * push でキャラクターが更新されてから，画面のデータを読み直すまでの時間（ミリ秒）．
@@ -44,19 +31,17 @@ type CharacterRealtimeRecord = {
   aura_item: string | null;
 };
 
-export function CharacterDashboard({
-  characters: initialCharacters,
-  pendingRepositories,
-  worldActivity,
-  questBoard,
-}: CharacterDashboardProps) {
+/*
+ * キャラクターの一覧を，Realtime で最新に保つ．
+ *
+ * push で経験値が入ると，DB のキャラクターの行が更新され，その内容が届く．
+ * 届いたらすぐ画面のキャラクターを書き換え，少し待ってから
+ * ページのデータ（クエストやゴールドなど）も読み直す．
+ */
+export function useRealtimeCharacters(initialCharacters: Character[]) {
   const router = useRouter();
   const [characters, setCharacters] =
     useState<Character[]>(initialCharacters);
-
-  const repositoryCount =
-    characters.length +
-    pendingRepositories.length;
 
   useEffect(() => {
     const supabase = createClient();
@@ -79,9 +64,7 @@ export function CharacterDashboard({
 
       // 本人のキャラクターだけが届くよう，RLSにログイン情報を渡す
       if (session) {
-        supabase.realtime.setAuth(
-          session.access_token,
-        );
+        supabase.realtime.setAuth(session.access_token);
       }
 
       channel = supabase
@@ -142,76 +125,5 @@ export function CharacterDashboard({
     };
   }, [router]);
 
-  return (
-    <section>
-      {characters.length > 0 && (
-        <>
-          <RepositoryWorld
-            characters={characters}
-            activity={worldActivity}
-          />
-
-          {questBoard}
-        </>
-      )}
-
-      <div className="mb-5">
-        <h2 className="text-2xl font-bold text-white">
-          あなたのリポジトリ
-        </h2>
-
-        <p className="mt-1 text-sm text-slate-400">
-          連携リポジトリ：{repositoryCount}件
-        </p>
-      </div>
-
-      {repositoryCount > 0 ? (
-        <div className="grid gap-6 md:grid-cols-2">
-          {pendingRepositories.map(
-            (repository) => (
-              <div
-                key={repository.id}
-                className="md:col-span-2"
-              >
-                <CharacterSetupForm
-                  repositoryId={
-                    repository.id
-                  }
-                  repositoryName={
-                    `${repository.owner}/${repository.name}`
-                  }
-                  returnTo="/"
-                />
-              </div>
-            ),
-          )}
-
-          {characters.map((character) => (
-            <CharacterCard
-              key={character.id}
-              character={character}
-            />
-          ))}
-        </div>
-      ) : (
-        <div className="rounded-3xl border border-dashed border-slate-700 p-8 text-center text-slate-400">
-          <p>
-            リポジトリがまだ登録されていません．
-          </p>
-
-          <p className="mt-2 text-sm">
-            右上の「リポジトリの追加・連携解除」から，
-            育てたいリポジトリを選びましょう．
-          </p>
-
-          <PendingLink
-            href="/how-to-use"
-            className="mt-5 inline-flex rounded-xl border border-cyan-400/30 bg-cyan-400/10 px-4 py-2 text-sm font-semibold text-cyan-200 transition hover:border-cyan-300/60 hover:bg-cyan-400/20"
-          >
-            使い方を見る
-          </PendingLink>
-        </div>
-      )}
-    </section>
-  );
+  return characters;
 }

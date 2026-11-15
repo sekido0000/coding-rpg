@@ -1,4 +1,3 @@
-import { PendingLink } from "@/components/ui/pending-link";
 import type {
   QuestBoardItem,
   WeeklyQuestBoard,
@@ -178,40 +177,25 @@ function QuestRow({
 }
 
 /*
- * 今週のクエストと，持っているゴールド．
- * ホームのリポジトリワールドの下に表示する．
+ * 今週のクエスト．村の上に開くパネル（QuestPanel）の中に表示する．
+ * 持っているゴールドとお店への入口は，村の上の帯にある．
  */
 export function QuestBoard({ board }: QuestBoardProps) {
   return (
     <section
       aria-labelledby="quest-board-heading"
-      className="mb-10 rounded-2xl border border-slate-800 bg-slate-900/60 p-5"
+      className="max-h-[85dvh] overflow-y-auto rounded-2xl border border-slate-700 bg-slate-900 p-5 shadow-2xl scrollbar-subtle"
     >
-      <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h2
-            id="quest-board-heading"
-            className="text-xl font-bold text-white"
-          >
-            今週のクエスト
-          </h2>
-          <p className="mt-1 text-xs text-slate-400">
-            全部のリポジトリのコミットで進みます．月曜0時に入れ替わり（あと{board.daysLeft}日）
-          </p>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <p className="rounded-full border border-amber-300/40 bg-amber-300/10 px-3 py-1 text-sm font-bold text-amber-200">
-            💰 {board.gold} G
-          </p>
-
-          <PendingLink
-            href="/shop"
-            className="rounded-full bg-amber-300 px-3 py-1 text-sm font-bold text-slate-950 transition hover:bg-amber-200"
-          >
-            🏪 お店へ
-          </PendingLink>
-        </div>
+      <div className="mb-4 pr-10">
+        <h2
+          id="quest-board-heading"
+          className="text-xl font-bold text-white"
+        >
+          📜 今週のクエスト
+        </h2>
+        <p className="mt-1 text-xs text-slate-400">
+          全部のリポジトリのコミットで進みます．月曜0時に入れ替わり（あと{board.daysLeft}日）
+        </p>
       </div>
 
       <ul className="grid gap-3 sm:grid-cols-2">

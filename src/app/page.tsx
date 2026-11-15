@@ -1,21 +1,49 @@
-import { CharacterDashboard } from "@/components/characters/character-dashboard";
 import { LandingPage } from "@/components/landing/landing-page";
-import { AppLogo } from "@/components/layout/app-logo";
 import { getCharacters } from "@/data/characters";
 import { getRepositoriesAwaitingCharacter } from "@/data/repositories";
 import { getWorldActivity } from "@/data/world-activity";
 import { getWeeklyQuestBoard } from "@/data/quests";
 import { QuestBoard } from "@/components/quests/quest-board";
+import { QuestPanel } from "@/components/quests/quest-panel";
 import { TitleBadge } from "@/components/titles/title-badge";
+import { WorldHome } from "@/components/world/world-home";
 import { getSelectedTitle } from "@/data/titles";
 import { signOutAction } from "@/app/actions/auth-actions";
 import { createClient } from "@/lib/supabase/server";
 import { SignOutButton } from "@/components/auth/sign-out-button";
 import { PendingLink } from "@/components/ui/pending-link";
-import { RedirectLink } from "@/components/ui/redirect-link";
+import Image from "next/image";
+import Link from "next/link";
 
 export const dynamic = "force-dynamic";
 
+// 上の帯のボタン．スマホでは文字を隠してアイコンだけにする
+function HudLink({
+  href,
+  icon,
+  label,
+}: {
+  href: string;
+  icon: string;
+  label: string;
+}) {
+  return (
+    <PendingLink
+      href={href}
+      spinnerOnly
+      className="flex items-center gap-1.5 rounded-xl border border-white/10 bg-white/5 px-3 py-1.5 text-sm font-semibold text-slate-200 transition hover:border-white/25 hover:bg-white/10"
+    >
+      <span aria-hidden="true">{icon}</span>
+      <span className="hidden sm:inline">{label}</span>
+      <span className="sr-only sm:hidden">{label}</span>
+    </PendingLink>
+  );
+}
+
+/*
+ * ホーム．ログイン後は，リポジトリワールド（村）を画面いっぱいに表示する．
+ * 上の帯に，称号・ゴールドと，各ページやクエストへの入口を置く．
+ */
 export default async function Home() {
   const supabase = await createClient();
 
@@ -45,100 +73,93 @@ export default async function Home() {
   const githubName =
     user.user_metadata.user_name ??
     user.user_metadata.name ??
-    user.email ??
     "GitHubユーザー";
 
-  /*
-   * 保留中リポジトリがキャラクター作成済みに変わった時は、
-   * Realtime用のクライアントstateも最新データで作り直す。
-   */
-  const dashboardKey = [
-    ...characters.map(
-      (character) =>
-        `character:${character.id}`,
-    ),
-    ...pendingRepositories.map(
-      (repository) =>
-        `pending:${repository.id}`,
-    ),
-  ]
+  // キャラクターが増えた・減った時は，Realtime 用の状態も作り直す
+  const worldKey = characters
+    .map((character) => character.id)
     .sort()
     .join("|");
 
   return (
-    <main className="flex min-h-screen flex-col bg-slate-950 px-6">
-      <div className="mx-auto flex w-full max-w-6xl flex-1 flex-col py-8">
-        <div className="mb-8 flex flex-col gap-5 border-b border-slate-800 pb-6 sm:flex-row sm:items-center sm:justify-between">
-          <AppLogo />
+    <main className="flex h-dvh flex-col bg-slate-950">
+      <h1 className="sr-only">Coding RPG リポジトリワールド</h1>
 
-          <div className="flex flex-wrap items-center gap-3 sm:justify-end">
-            <PendingLink
-              href="/how-to-use"
-              className="rounded-xl border border-cyan-400/30 bg-cyan-400/10 px-4 py-2 text-sm font-semibold text-cyan-200 transition hover:border-cyan-300/60 hover:bg-cyan-400/20"
-            >
-              使い方
-            </PendingLink>
+      {/* 上の帯 */}
+      <header className="relative z-20 flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-white/10 bg-slate-950/90 px-3 py-2 backdrop-blur sm:px-5">
+        <Link
+          href="/"
+          aria-label="Coding RPG"
+          className="shrink-0"
+        >
+          <Image
+            src="/images/logo.png"
+            alt="Coding RPG"
+            width={1518}
+            height={347}
+            className="h-7 w-auto sm:h-8"
+            priority
+          />
+        </Link>
 
-            <PendingLink
-              href="/titles"
-              className="rounded-xl border border-amber-300/30 bg-amber-300/10 px-4 py-2 text-sm font-semibold text-amber-200 transition hover:border-amber-200/60 hover:bg-amber-300/20"
-            >
-              🏅 称号
-            </PendingLink>
-
-            <RedirectLink
-              href="/github/install"
-              pendingText="GitHubへ移動中..."
-              className="rounded-xl bg-emerald-400 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-emerald-300"
-            >
-              リポジトリの追加・連携解除
-            </RedirectLink>
-
-            <div className="flex items-center gap-3 rounded-xl border border-slate-700 bg-slate-900/70 py-1.5 pl-3 pr-1.5">
-              <div className="min-w-0">
-                {/* 選んでいる称号を，名前の上に表示する */}
-                {selectedTitle && (
-                  <p className="mb-1">
-                    <span className="sr-only">称号：</span>
-                    <TitleBadge
-                      name={selectedTitle.name}
-                      rank={selectedTitle.rank}
-                      size="sm"
-                    />
-                  </p>
-                )}
-                <p className="max-w-40 truncate text-sm font-semibold text-white">
-                  {githubName}
-                </p>
-              </div>
-
-              <form action={signOutAction}>
-                <SignOutButton />
-              </form>
-            </div>
-          </div>
+        {/* 称号と名前 */}
+        <div className="flex min-w-0 items-center gap-2">
+          {selectedTitle && (
+            <TitleBadge
+              name={selectedTitle.name}
+              rank={selectedTitle.rank}
+              size="sm"
+            />
+          )}
+          <p className="max-w-32 truncate text-sm font-semibold text-white">
+            {githubName}
+          </p>
         </div>
-        {/*
-         * キャッチコピーはトップページ（ログイン前）だけに出す．
-         * 見出しの構造のため，画面には出さずに h1 だけ置く．
-         */}
-        <h1 className="sr-only">
-          Coding RPG ホーム
-        </h1>
 
-        <CharacterDashboard
-          key={dashboardKey}
+        <p className="rounded-full border border-amber-300/40 bg-amber-300/10 px-3 py-1 text-sm font-bold text-amber-200">
+          💰 {questBoard.gold} G
+        </p>
+
+        <nav
+          aria-label="メニュー"
+          className="ml-auto flex flex-wrap items-center gap-2"
+        >
+          <QuestPanel hasPendingRewards={questBoard.hasPendingRewards}>
+            <QuestBoard board={questBoard} />
+          </QuestPanel>
+          <HudLink href="/characters" icon="👥" label="キャラクター" />
+          <HudLink href="/shop" icon="🏪" label="お店" />
+          <HudLink href="/titles" icon="🏅" label="称号" />
+          <HudLink href="/how-to-use" icon="❔" label="使い方" />
+
+          <form action={signOutAction}>
+            <SignOutButton />
+          </form>
+        </nav>
+      </header>
+
+      {/* キャラクターをまだ作っていないリポジトリのお知らせ */}
+      {pendingRepositories.length > 0 && (
+        <div className="relative z-20 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 bg-emerald-500/15 px-4 py-2 text-sm text-emerald-100">
+          <p>
+            キャラクターを作っていないリポジトリが {pendingRepositories.length} 件あります
+          </p>
+          <PendingLink
+            href="/characters"
+            className="font-bold text-emerald-300 underline-offset-2 hover:underline"
+          >
+            キャラクターを作る →
+          </PendingLink>
+        </div>
+      )}
+
+      {/* 村（残りの高さいっぱい） */}
+      <div className="relative min-h-0 flex-1">
+        <WorldHome
+          key={worldKey}
           characters={characters}
-          pendingRepositories={
-            pendingRepositories
-          }
           worldActivity={worldActivity}
-          questBoard={<QuestBoard board={questBoard} />}
         />
-
-        <footer className="mt-auto border-t border-slate-800 pb-2 pt-10 text-center text-sm text-slate-600">
-          © 2026 Coding RPG. All rights reserved.
-        </footer>
       </div>
     </main>
   );
