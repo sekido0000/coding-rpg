@@ -72,6 +72,12 @@ export type WorldMap = {
   // 道の左端と右端（ピクセル）
   roadMinX: number;
   roadMaxX: number;
+  /*
+   * キャラクターが歩く範囲の左端と右端（ピクセル）．
+   * 建物が建っているあたりだけを歩き，誰もいない世界の端まで行かないようにする．
+   */
+  walkMinX: number;
+  walkMaxX: number;
   // つなぎの道の横の位置（ピクセル）
   connectorXs: number[];
 };
@@ -143,17 +149,39 @@ export function buildWorldMap(characterIds: string[]): WorldMap {
 
   lots.sort((a, b) => a.row - b.row || a.x - b.x);
 
-  const connectorXs = Array.from(
+  const boundaryX = (boundary: number) =>
+    (MARGIN_TILES + boundary * LOT_TILES) * TILE;
+
+  // つなぎの道を置く区画の境目
+  const connectorBoundaries = Array.from(
     { length: columns + 1 },
     (_, boundary) => boundary,
-  )
-    .filter(
-      (boundary) =>
-        boundary === 0 ||
-        boundary === columns ||
-        boundary % CONNECTOR_EVERY === 0,
-    )
-    .map((boundary) => (MARGIN_TILES + boundary * LOT_TILES) * TILE);
+  ).filter(
+    (boundary) =>
+      boundary === 0 ||
+      boundary === columns ||
+      boundary % CONNECTOR_EVERY === 0,
+  );
+
+  /*
+   * キャラクターが歩く範囲．建物（家・掲示板・雑貨店）が建っている区画を含み，
+   * 両端がつなぎの道になるところまで広げる（端からも，もう一方の道へ行けるように）．
+   */
+  const builtColumns = lots
+    .filter((lot) => lot.kind !== "empty")
+    // 区画の真ん中の位置から，何番目の区画かに戻す
+    .map((lot) => (lot.x / TILE - MARGIN_TILES - LOT_TILES / 2) / LOT_TILES);
+  const firstBuilt = Math.min(...builtColumns);
+  const lastBuilt = Math.max(...builtColumns);
+
+  const walkStart = connectorBoundaries.filter(
+    (boundary) => boundary <= firstBuilt,
+  ).at(-1)!;
+  const walkEnd = connectorBoundaries.find(
+    (boundary) => boundary >= lastBuilt + 1,
+  )!;
+
+  const connectorXs = connectorBoundaries.map(boundaryX);
 
   return {
     width,
@@ -162,6 +190,8 @@ export function buildWorldMap(characterIds: string[]): WorldMap {
     roadYs: [ROWS[0].road * TILE, ROWS[1].road * TILE],
     roadMinX: connectorXs[0],
     roadMaxX: connectorXs[connectorXs.length - 1],
+    walkMinX: boundaryX(walkStart),
+    walkMaxX: boundaryX(walkEnd),
     connectorXs,
   };
 }
@@ -177,7 +207,7 @@ export function pickRoadTarget(
   const road = random() < 0.5 ? 0 : 1;
 
   return {
-    x: map.roadMinX + (map.roadMaxX - map.roadMinX) * random(),
+    x: map.walkMinX + (map.walkMaxX - map.walkMinX) * random(),
     y: map.roadYs[road],
   };
 }
@@ -196,7 +226,12 @@ export function planRoute(
     return [to];
   }
 
-  const connector = map.connectorXs.reduce((best, x) =>
+  // 歩く範囲の中にあるつなぎの道だけを使う（範囲の両端には必ずある）
+  const connectors = map.connectorXs.filter(
+    (x) => x >= map.walkMinX && x <= map.walkMaxX,
+  );
+
+  const connector = connectors.reduce((best, x) =>
     Math.abs(from.x - x) + Math.abs(x - to.x) <
     Math.abs(from.x - best) + Math.abs(best - to.x)
       ? x

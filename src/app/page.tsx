@@ -120,6 +120,7 @@ export default async function Home() {
         </div>
 
         <p className="rounded-full border border-amber-300/40 bg-amber-300/10 px-3 py-1 text-sm font-bold text-amber-200">
+          <span className="mr-1 text-xs font-semibold text-amber-200/80">所持金</span>
           💰 {questBoard.gold} G
         </p>
 

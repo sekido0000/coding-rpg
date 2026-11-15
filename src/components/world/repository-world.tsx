@@ -109,8 +109,8 @@ const GO_HOME_CHANCE = 0.2;
 
 // 家の中にいる時間（ミリ秒）
 const INSIDE_TIME = {
-  min: 8000,
-  max: 15000,
+  min: 30000,
+  max: 60000,
 } as const;
 
 // キャラクターの重なり順の上限．押せるものや吹き出しは，これより手前に出す
@@ -832,10 +832,8 @@ export function RepositoryWorld({
               <HouseInterior
                 character={character}
                 isHome={insideUntil > 0}
-                // 家に入るたびに，机で作業するかベッドで休むかが変わる
-                activity={
-                  Math.floor(insideUntil / 1000) % 2 === 0 ? "desk" : "bed"
-                }
+                // 家に入るたびに，最初にいる場所が変わる
+                seed={Math.floor(insideUntil / 1000)}
               />
             </BuildingDialog>
           );

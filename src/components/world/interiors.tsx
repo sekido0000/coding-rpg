@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useRef, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 
 import { EquipmentLayers } from "@/components/items/equipment-layers";
 import { CompanionSprite } from "@/components/items/companion-sprite";
@@ -181,23 +181,99 @@ const SHOPKEEPER: Rect[] = [
 
 /* ---------- 家の中 ---------- */
 
+// 部屋の中で過ごす場所と，そこでしていること
+type RoomSpot = "desk" | "bookshelf" | "window" | "rug" | "bed";
+
+const ROOM_SPOTS: Record<
+  RoomSpot,
+  {
+    // 立つ位置と大きさ（部屋に対する%）
+    left: number;
+    bottom: number;
+    width: number;
+    label: string;
+    // そこにいる時間（ミリ秒）
+    stay: [number, number];
+  }
+> = {
+  desk: { left: 56, bottom: 14, width: 13, label: "机でコードを書いています", stay: [9000, 14000] },
+  bookshelf: { left: 18, bottom: 30, width: 12, label: "本を読んでいます", stay: [7000, 11000] },
+  window: { left: 42, bottom: 36, width: 11, label: "窓の外をながめています", stay: [5000, 8000] },
+  rug: { left: 45, bottom: 10, width: 12, label: "体をのばしています", stay: [5000, 7000] },
+  bed: { left: 16, bottom: 16, width: 12, label: "ベッドで休んでいます", stay: [10000, 16000] },
+};
+
+const SPOT_NAMES = Object.keys(ROOM_SPOTS) as RoomSpot[];
+
+// 部屋の中を歩く時間（ミリ秒．CSS の移り変わりの時間と合わせる）
+const ROOM_WALK_TIME = 1500;
+
 type HouseInteriorProps = {
   character: Character;
   // キャラクターが家の中にいる時は true
   isHome: boolean;
-  // 中で何をしているか（机でコードを書く・ベッドで休む）
-  activity: "desk" | "bed";
+  // 家に入るたびに変わる数．最初にいる場所を決めるのに使う
+  seed: number;
 };
 
+/*
+ * 家の中．キャラクターが家にいる時は，机・本棚・窓・じゅうたん・ベッドを
+ * 行き来しながら過ごす様子が見える．
+ */
 export function HouseInterior({
   character,
   isHome,
-  activity,
+  seed,
 }: HouseInteriorProps) {
   const evolution = getCharacterEvolution(
     character.characterType,
     character.level,
   );
+
+  const [spot, setSpot] = useState<RoomSpot>(
+    SPOT_NAMES[seed % SPOT_NAMES.length],
+  );
+  const [isWalking, setIsWalking] = useState(false);
+  const [isFacingLeft, setIsFacingLeft] = useState(false);
+
+  // しばらくすると，別の場所へ歩いていく
+  useEffect(() => {
+    if (!isHome || isWalking) {
+      return;
+    }
+
+    const [min, max] = ROOM_SPOTS[spot].stay;
+    const timer = window.setTimeout(
+      () => {
+        const others = SPOT_NAMES.filter((name) => name !== spot);
+        const next = others[Math.floor(Math.random() * others.length)];
+
+        setIsFacingLeft(ROOM_SPOTS[next].left < ROOM_SPOTS[spot].left);
+        setIsWalking(true);
+        setSpot(next);
+      },
+      min + Math.random() * (max - min),
+    );
+
+    return () => window.clearTimeout(timer);
+  }, [isHome, isWalking, spot]);
+
+  // 歩き終わったら，その場所ですることを始める
+  useEffect(() => {
+    if (!isWalking) {
+      return;
+    }
+
+    const timer = window.setTimeout(
+      () => setIsWalking(false),
+      ROOM_WALK_TIME,
+    );
+
+    return () => window.clearTimeout(timer);
+  }, [isWalking]);
+
+  const place = ROOM_SPOTS[spot];
+  const doing = isWalking ? null : spot;
 
   return (
     <div className="space-y-4">
@@ -225,32 +301,60 @@ export function HouseInterior({
 
         {isHome ? (
           <div
-            className="absolute"
-            style={
-              activity === "desk"
-                ? { left: "56%", bottom: "14%", width: "13%" }
-                : { left: "16%", bottom: "16%", width: "12%" }
-            }
+            className="absolute transition-[left,bottom,width] ease-in-out"
+            style={{
+              left: `${place.left}%`,
+              bottom: `${place.bottom}%`,
+              width: `${place.width}%`,
+              transitionDuration: `${ROOM_WALK_TIME}ms`,
+            }}
           >
+            {/* 本を読んでいる時は，本を持つ */}
+            {doing === "bookshelf" && (
+              <span className="room-bob absolute -right-1 top-[35%] z-10 text-xl sm:text-2xl">
+                📖
+              </span>
+            )}
+
+            {/* 寝ている時は，Z が浮かんでいく */}
+            {doing === "bed" && (
+              <span aria-hidden="true" className="absolute -top-2 right-0">
+                {[0, 1, 2].map((index) => (
+                  <span
+                    key={index}
+                    className="room-zzz absolute text-base font-black text-sky-100 [text-shadow:0_1px_2px_rgba(0,0,0,0.8)] sm:text-xl"
+                    style={{ animationDelay: `${index * 0.8}s` }}
+                  >
+                    Z
+                  </span>
+                ))}
+              </span>
+            )}
+
             <EquipmentLayers
               companionItem={character.companionItem}
               auraItem={null}
             >
               <Image
                 src={evolution.imagePath}
-                alt={`${character.name}`}
+                alt={character.name}
                 width={128}
                 height={128}
                 className={`repo-pixel-image block h-auto w-full ${
-                  activity === "bed" ? "rotate-[-80deg]" : "repo-character-float"
+                  isFacingLeft ? "-scale-x-100" : ""
+                } ${
+                  isWalking
+                    ? "room-walk"
+                    : doing === "bed"
+                      ? "rotate-[-80deg]"
+                      : doing === "desk"
+                        ? "room-typing"
+                        : doing === "rug"
+                          ? "room-stretch"
+                          : "repo-character-float"
                 }`}
               />
             </EquipmentLayers>
-            {activity === "bed" && (
-              <span className="absolute -right-2 -top-4 animate-pulse text-lg font-bold text-sky-200 [text-shadow:0_1px_2px_rgba(0,0,0,0.8)]">
-                Zzz
-              </span>
-            )}
           </div>
         ) : (
           <div className="absolute inset-x-0 bottom-[30%] flex justify-center px-4">
@@ -268,18 +372,17 @@ export function HouseInterior({
         {/* 家にいる時は，何をしているかを部屋の左上に出す */}
         {isHome && (
           <p className="absolute left-2 top-2 rounded-lg bg-slate-950/75 px-2.5 py-1 text-xs font-bold text-white sm:left-3 sm:top-3 sm:text-sm">
-            {activity === "desk"
-              ? `${character.name}は机でコードを書いています`
-              : `${character.name}はベッドで休んでいます`}
+            {character.name}は
+            {doing ? place.label : "歩いています"}
           </p>
         )}
 
-        {/* 詳細画面への入口は，部屋の右上に置く（部屋の下に何も残さない） */}
+        {/* キャラクターの詳細画面への入口は，部屋の右下に置く（部屋の下に何も残さない） */}
         <PendingLink
           href={`/repositories/${character.repositoryId}`}
           className="absolute bottom-2 right-2 rounded-lg border border-emerald-300/50 bg-slate-950/80 px-2.5 py-1 text-xs font-semibold text-emerald-200 transition hover:bg-slate-900 sm:bottom-3 sm:right-3 sm:text-sm"
         >
-          詳細を見る →
+          📊 {character.name}のステータス →
         </PendingLink>
       </Room>
     </div>
@@ -336,9 +439,11 @@ export function StoreInterior({ inventory }: { inventory: Inventory }) {
         <Placed left={50} bottom={4} width={44}>
           <Pixels width={40} height={17} rects={COUNTER} />
         </Placed>
-        <div className="absolute left-[50%] top-[8%] rounded-xl bg-white px-3 py-1.5 text-xs font-bold text-slate-900 shadow-lg sm:text-sm">
-          いらっしゃい！ゆっくり見ていってね
-          <span className="absolute left-[60%] top-full border-x-[6px] border-t-[6px] border-x-transparent border-t-white" />
+        {/* 店主の吹き出し．頭のすぐ上に出し，しっぽを店主に向ける */}
+        <div className="absolute bottom-[56%] left-[67%] -translate-x-1/2 whitespace-nowrap rounded-xl bg-white px-3 py-1.5 text-xs font-bold text-slate-900 shadow-lg sm:text-sm">
+          いらっしゃい！
+          <span className="hidden sm:inline">ゆっくり見ていってね</span>
+          <span className="absolute left-1/2 top-full -translate-x-1/2 border-x-[6px] border-t-[6px] border-x-transparent border-t-white" />
         </div>
 
         <button
@@ -361,7 +466,7 @@ export function StoreInterior({ inventory }: { inventory: Inventory }) {
             </p>
           </div>
           <p className="rounded-full border border-amber-300/40 bg-amber-300/10 px-3 py-1 text-sm font-bold text-amber-200">
-            💰 {inventory.gold} G
+            所持金 💰 {inventory.gold} G
           </p>
         </div>
 
