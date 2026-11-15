@@ -715,6 +715,36 @@ body {
   }
 }
 
+/* ボスの目や炎が，ゆっくり明るさを変えて光る */
+.boss-glow {
+  animation: boss-glow 1.6s ease-in-out infinite;
+}
+
+@keyframes boss-glow {
+  50% {
+    opacity: 0.55;
+  }
+}
+
+/* 倒れたボスが，沈みながら薄くなる */
+.battle-defeated {
+  animation: battle-defeated 0.9s ease-in both;
+}
+
+@keyframes battle-defeated {
+  20% {
+    transform: translateX(-4px);
+  }
+  40% {
+    transform: translateX(4px);
+  }
+  100% {
+    opacity: 0.25;
+    filter: grayscale(1);
+    transform: translateY(10px);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .repo-character-walk,
   .repo-character-float,
@@ -744,8 +774,16 @@ body {
   .battle-shake,
   .battle-lunge-up,
   .battle-lunge-down,
-  .battle-result {
+  .battle-result,
+  .boss-glow {
     animation: none;
+  }
+
+  /* 倒れたボスは，動かさずに薄くする */
+  .battle-defeated {
+    animation: none;
+    opacity: 0.25;
+    filter: grayscale(1);
   }
 
   /* 数字は，動かさずに少しのあいだ表示する */

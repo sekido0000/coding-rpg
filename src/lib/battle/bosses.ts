@@ -56,8 +56,6 @@ export type BossDefinition = {
   description: string;
   // 戦い方のヒント（初心者向けに，負けた時にも出す）
   hint: string;
-  // 弱点などの短い説明
-  traits: string[];
   recommendedRoles: Role[];
   // ★1 を 1 とした時の，ステータスの比率
   profile: Omit<Stats, "magic">;
@@ -157,7 +155,6 @@ export const BOSS_CATALOG: Record<BossId, BossDefinition> = {
     icon: "🗿",
     description: "あと回しにした修正が積み重なって生まれた巨人．放っておくほど強くなる．",
     hint: "毎ターン攻撃力が上がっていく（利息）．魔法が効きやすいので，マジックで早めに倒そう．",
-    traits: ["魔法が効きやすい", "物理は効きにくい", "毎ターン攻撃力が上がる"],
     recommendedRoles: ["magic", "support", "tank"],
     profile: { hp: 1.1, attack: 0.8, defense: 1.2, speed: 0.6 },
     physicalRate: 0.8,
@@ -176,7 +173,6 @@ export const BOSS_CATALOG: Record<BossId, BossDefinition> = {
     icon: "🐉",
     description: "処理がからまり合って，どこから読めばいいか分からなくなった竜．",
     hint: "からまった麺で全員をまとめて攻撃してくる．サポートの回復で持ちこたえよう．物理がよく効く．",
-    traits: ["物理が効きやすい", "全員への攻撃が多い"],
     recommendedRoles: ["support", "attacker", "tank"],
     profile: { hp: 1.1, attack: 1.0, defense: 0.9, speed: 1.0 },
     physicalRate: 1.3,
@@ -194,7 +190,6 @@ export const BOSS_CATALOG: Record<BossId, BossDefinition> = {
     icon: "🎲",
     description: "意味の分からない数字を書き散らす盗賊団．素早く，急所を狙ってくる．",
     hint: "素早く，会心の一撃が多い．タンクに引きつけてもらい，物理で攻めよう．",
-    traits: ["物理が効きやすい", "素早い", "会心が多い"],
     recommendedRoles: ["tank", "attacker", "support"],
     profile: { hp: 0.95, attack: 1.1, defense: 0.8, speed: 1.6 },
     physicalRate: 1.3,
@@ -213,7 +208,6 @@ export const BOSS_CATALOG: Record<BossId, BossDefinition> = {
     icon: "👻",
     description: "誰も触れなくなった古いコードにとりついた亡霊．物理攻撃はすり抜ける．",
     hint: "物理が効きにくい．マジックの魔法攻撃が頼りになる．",
-    traits: ["魔法が効きやすい", "物理は効きにくい"],
     recommendedRoles: ["magic", "support", "tank"],
     profile: { hp: 1.0, attack: 1.05, defense: 0.9, speed: 1.0 },
     physicalRate: 0.65,
@@ -231,7 +225,6 @@ export const BOSS_CATALOG: Record<BossId, BossDefinition> = {
     icon: "🌀",
     description: "終わらない処理をぐるぐる回し続ける番人．少しずつ傷が治っていく．",
     hint: "毎ターンHPが回復する．回復に負けないよう，アタッカーやハンターで一気に削ろう．",
-    traits: ["毎ターンHPが回復する", "ときどき大きく回復する"],
     recommendedRoles: ["attacker", "hunter", "support"],
     profile: { hp: 1.0, attack: 0.85, defense: 1.0, speed: 0.9 },
     physicalRate: 1.0,
@@ -250,7 +243,6 @@ export const BOSS_CATALOG: Record<BossId, BossDefinition> = {
     icon: "💥",
     description: "誰も受け止めなかったエラーのかたまり．力をためて，突然爆発する．",
     hint: "「力をためている」の次に強烈な一撃が来る．タンクやサポートのバリアで受け止めよう．",
-    traits: ["力をためた次の攻撃が強烈", "防御は低め"],
     recommendedRoles: ["tank", "support", "magic"],
     profile: { hp: 0.9, attack: 1.0, defense: 0.7, speed: 1.1 },
     physicalRate: 1.1,
@@ -268,7 +260,6 @@ export const BOSS_CATALOG: Record<BossId, BossDefinition> = {
     icon: "🐍",
     description: "パッケージが絡み合って生まれた大蛇．毒でじわじわ体力を奪う．",
     hint: "全員に毒をまく．サポートの回復で毒に負けないようにしよう．",
-    traits: ["全員に毒をまく", "体力が多い"],
     recommendedRoles: ["support", "magic", "tank"],
     profile: { hp: 1.1, attack: 0.9, defense: 1.0, speed: 0.9 },
     physicalRate: 1.0,
@@ -286,7 +277,6 @@ export const BOSS_CATALOG: Record<BossId, BossDefinition> = {
     icon: "🐺",
     description: "2つの変更がぶつかり合って生まれた，頭が2つある獣．2体同時にかみついてくる．",
     hint: "2体同時に攻撃してくる．魔法が効きにくいので，アタッカーやハンターの物理で攻めよう．",
-    traits: ["物理が効きやすい", "魔法は効きにくい", "2体同時に攻撃"],
     recommendedRoles: ["attacker", "tank", "support"],
     profile: { hp: 1.0, attack: 0.9, defense: 1.0, speed: 1.1 },
     physicalRate: 1.35,
@@ -304,7 +294,6 @@ export const BOSS_CATALOG: Record<BossId, BossDefinition> = {
     icon: "🧱",
     description: "説明が一つもない迷宮の主．ときどき守りを固めて，攻撃が通らなくなる．",
     hint: "ときどき防御力を大きく上げる．ボスの防御力を下げる技（弱体）を持つ仲間を入れよう．",
-    traits: ["ときどき守りを固める", "防御が高い"],
     recommendedRoles: ["hunter", "magic", "support"],
     profile: { hp: 1.15, attack: 0.9, defense: 1.45, speed: 0.8 },
     physicalRate: 1.0,
@@ -322,7 +311,6 @@ export const BOSS_CATALOG: Record<BossId, BossDefinition> = {
     icon: "😈",
     description: "深夜に現れる，最も恐ろしい魔王．HPが半分を切ると本気を出す．",
     hint: "HPが半分を切ると攻撃力が上がる．回復・守り・攻撃のバランスがよいパーティーで挑もう．",
-    traits: ["HPが半分を切ると本気を出す", "弱点がない"],
     recommendedRoles: ["tank", "support", "attacker"],
     profile: { hp: 0.95, attack: 1.05, defense: 1.0, speed: 1.0 },
     physicalRate: 1.0,

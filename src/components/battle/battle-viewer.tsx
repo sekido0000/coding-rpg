@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 
 import type { BattleActionResult } from "@/app/actions/battle-actions";
 import type { BattleCharacter } from "@/components/battle/battle-arena";
+import { BossSprite } from "@/components/battle/boss-sprite";
 import { BOSS_CATALOG, MATERIAL_CATALOG } from "@/lib/battle/bosses";
 import type { BattleHit, BattleUnit } from "@/lib/battle/simulate";
 import { ROLE_CATALOG } from "@/lib/battle/stats";
@@ -181,8 +182,9 @@ export function BattleViewer({
     >
       {/* 上の帯 */}
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-white/10 px-4 py-2 text-sm text-slate-200">
-        <span>
-          {boss.icon} {boss.name}{" "}
+        <span className="flex items-center gap-2">
+          <BossSprite bossId={battle.bossId} className="h-6 w-6" />
+          {boss.name}{" "}
           <span className="text-amber-300">{"★".repeat(star)}</span>
         </span>
         <span>
@@ -208,15 +210,15 @@ export function BattleViewer({
         )}
       </div>
 
-      {/* ボス */}
-      <div className="flex flex-col items-center gap-3 px-4 pb-4 pt-8">
+      {/* ボス．戦いが終わったら，勝ち負けと報酬をボスの場所に出す */}
+      <div className="relative flex min-h-80 flex-col items-center gap-3 px-4 pb-4 pt-8">
         <div className="relative">
           <span
             key={isBossHit ? `hit-${stepIndex}` : "idle"}
             aria-hidden="true"
-            className={`grid h-32 w-32 place-items-center rounded-full bg-gradient-to-br from-violet-800/60 to-slate-900 text-7xl shadow-[0_0_40px_rgba(139,92,246,0.35)] ${
+            className={`block ${
               hpOf(bossUnit) <= 0
-                ? "opacity-20 grayscale transition duration-700"
+                ? "battle-defeated"
                 : isBossHit
                   ? "battle-shake"
                   : step?.actorId === "boss"
@@ -224,7 +226,10 @@ export function BattleViewer({
                     : "battle-idle"
             }`}
           >
-            {boss.icon}
+            <BossSprite
+              bossId={battle.bossId}
+              className="h-44 w-44 drop-shadow-[0_0_24px_rgba(139,92,246,0.45)]"
+            />
           </span>
           <HitNumbers key={`boss-${stepIndex}`} hits={bossHits} />
         </div>
@@ -236,6 +241,59 @@ export function BattleViewer({
             isBoss
           />
         </div>
+
+        {isFinished && (
+          <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-950/70 p-4 text-center backdrop-blur-[2px]">
+            {result.isWin ? (
+              <>
+                <p className="battle-result text-4xl font-black text-amber-300 drop-shadow">
+                  勝利！
+                </p>
+                {reward ? (
+                  <div className="mt-3 space-y-1 text-sm text-slate-100">
+                    <p>{boss.name}を倒して，報酬を手に入れた！</p>
+                    <p className="text-lg text-amber-200">💰 {reward.gold} G</p>
+                    <p>
+                      {reward.materials
+                        .map(
+                          ({ id, quantity }) =>
+                            `${MATERIAL_CATALOG[id].icon} ${MATERIAL_CATALOG[id].name} ×${quantity}`,
+                        )
+                        .join("　")}
+                    </p>
+                  </div>
+                ) : (
+                  <p className="mt-3 text-sm text-slate-300">
+                    今週の★{star}の報酬は，もう受け取っています．
+                  </p>
+                )}
+              </>
+            ) : (
+              <>
+                <p className="battle-result text-4xl font-black text-slate-200 drop-shadow">
+                  {result.isTimeout ? "時間切れ…" : "敗北…"}
+                </p>
+                <p className="mt-3 text-sm text-slate-200">
+                  {result.isTimeout
+                    ? `${result.rounds}ターンで倒しきれませんでした．`
+                    : "パーティーが全員倒れてしまいました．"}
+                  負けても何度でも挑み直せます．
+                </p>
+                <p className="mt-2 max-w-xl text-sm text-amber-100/90">
+                  💡 {boss.hint}
+                </p>
+              </>
+            )}
+
+            <button
+              type="button"
+              onClick={onClose}
+              className="mt-4 rounded-xl bg-amber-300 px-5 py-2.5 text-sm font-black text-slate-950 transition hover:bg-amber-200"
+            >
+              ボス選びに戻る
+            </button>
+          </div>
+        )}
       </div>
 
       {/* 行動の文 */}
@@ -306,59 +364,6 @@ export function BattleViewer({
         })}
       </div>
 
-      {/* 結果 */}
-      {isFinished && (
-        <div className="border-t border-white/10 bg-slate-950/80 p-6 text-center">
-          {result.isWin ? (
-            <>
-              <p className="battle-result text-3xl font-black text-amber-300">
-                勝利！
-              </p>
-              {reward ? (
-                <div className="mt-3 space-y-1 text-sm text-slate-100">
-                  <p>報酬を手に入れた！</p>
-                  <p className="text-amber-200">💰 {reward.gold} G</p>
-                  <p>
-                    {reward.materials
-                      .map(
-                        ({ id, quantity }) =>
-                          `${MATERIAL_CATALOG[id].icon} ${MATERIAL_CATALOG[id].name} ×${quantity}`,
-                      )
-                      .join("　")}
-                  </p>
-                </div>
-              ) : (
-                <p className="mt-3 text-sm text-slate-300">
-                  今週の★{star}の報酬は，もう受け取っています．
-                </p>
-              )}
-            </>
-          ) : (
-            <>
-              <p className="battle-result text-3xl font-black text-slate-300">
-                {result.isTimeout ? "時間切れ…" : "敗北…"}
-              </p>
-              <p className="mt-3 text-sm text-slate-300">
-                {result.isTimeout
-                  ? `${result.rounds}ターンで倒しきれませんでした．`
-                  : "パーティーが全員倒れてしまいました．"}
-                負けても何度でも挑み直せます．
-              </p>
-              <p className="mx-auto mt-2 max-w-xl text-sm text-amber-100/90">
-                💡 {boss.hint}
-              </p>
-            </>
-          )}
-
-          <button
-            type="button"
-            onClick={onClose}
-            className="mt-5 rounded-xl bg-amber-300 px-5 py-2.5 text-sm font-black text-slate-950 transition hover:bg-amber-200"
-          >
-            ボス選びに戻る
-          </button>
-        </div>
-      )}
     </section>
   );
 }

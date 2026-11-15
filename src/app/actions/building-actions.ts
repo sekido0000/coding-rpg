@@ -241,7 +241,7 @@ function getLotName(
   }
 
   if (key === "dungeon_gate") {
-    return "ダンジョンの入口";
+    return "ボス戦の入口";
   }
 
   if (isBuildingId(key)) {

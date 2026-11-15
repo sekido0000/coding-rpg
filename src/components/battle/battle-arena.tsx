@@ -9,6 +9,7 @@ import {
   type BattleActionResult,
 } from "@/app/actions/battle-actions";
 import { BattleViewer } from "@/components/battle/battle-viewer";
+import { BossSprite } from "@/components/battle/boss-sprite";
 import type { BattleStatus } from "@/data/battle";
 import {
   BOSS_CATALOG,
@@ -27,10 +28,8 @@ import {
   fillWithHelpers,
   recommendParty,
 } from "@/lib/battle/party";
-import {
-  getUnlockedSkills,
-  describeSkill,
-} from "@/lib/battle/skills";
+import type { BattleMember } from "@/lib/battle/simulate";
+import { describeSkill, getUnlockedSkills } from "@/lib/battle/skills";
 import {
   ROLE_CATALOG,
   STAT_KEYS,
@@ -71,15 +70,92 @@ function RoleBadge({ characterType }: { characterType: CharacterType }) {
 }
 
 /*
+ * 出陣するパーティーの枠（大きめの四角）．
+ * キャラクターが入っていれば押すと外せる．空いた枠には，助っ人が入るならその姿を薄く出す．
+ */
+function PartySlot({
+  character,
+  helper,
+  onRemove,
+}: {
+  character?: BattleCharacter;
+  helper?: BattleMember;
+  onRemove: () => void;
+}) {
+  const box =
+    "flex aspect-square flex-col items-center justify-center gap-1 rounded-2xl border-2 p-2 text-center";
+
+  if (character) {
+    return (
+      <button
+        type="button"
+        onClick={onRemove}
+        aria-label={`${character.name}をパーティーから外す`}
+        className={`${box} group relative border-amber-300 bg-amber-300/10 transition hover:bg-amber-300/20`}
+      >
+        <span className="absolute right-2 top-2 rounded-full bg-slate-950/70 px-1.5 text-xs text-slate-300 opacity-60 transition group-hover:opacity-100">
+          ✕
+        </span>
+        <Image
+          src={character.imagePath}
+          alt=""
+          width={112}
+          height={112}
+          className="h-3/5 w-3/5"
+        />
+        <span className="w-full truncate text-sm font-bold text-white">
+          {character.name}
+        </span>
+        <span className="flex flex-wrap items-center justify-center gap-1 text-xs text-slate-300">
+          Lv{character.level}
+          <RoleBadge characterType={character.characterType} />
+        </span>
+      </button>
+    );
+  }
+
+  if (helper) {
+    return (
+      <div className={`${box} border-dashed border-slate-600 bg-slate-900/40`}>
+        <Image
+          src={getCharacterEvolution(helper.characterType, helper.level).imagePath}
+          alt=""
+          width={112}
+          height={112}
+          className="h-3/5 w-3/5 opacity-60"
+        />
+        <span className="w-full truncate text-sm font-bold text-slate-300">
+          🤝 {helper.name}
+        </span>
+        <span className="text-xs text-slate-400">
+          Lv{helper.level}（空いた枠に入ります）
+        </span>
+      </div>
+    );
+  }
+
+  return (
+    <div
+      className={`${box} border-dashed border-slate-700 bg-slate-900/40 text-sm text-slate-500`}
+    >
+      空き
+      <span className="text-xs">下のキャラクターを押すと入ります</span>
+    </div>
+  );
+}
+
+/*
  * ボス戦の画面．ボス → ★ → パーティーの順に選んで挑む．
  * 挑むと，サーバーで計算した戦いの様子を BattleViewer で再生する．
  */
 export function BattleArena({
   characters,
   status,
+  gold,
 }: {
   characters: BattleCharacter[];
   status: BattleStatus;
+  gold: number;
 }) {
   const router = useRouter();
   const [bossId, setBossId] = useState<BossId>(BOSS_IDS[0]);
@@ -102,7 +178,7 @@ export function BattleArena({
     .map((id) => characters.find((character) => character.id === id))
     .filter((character): character is BattleCharacter => Boolean(character));
 
-  // 空いた枠に入る助っ人（表示用）
+  // 空いた枠に入る助っ人（★1〜★3 だけ）
   const helpers = fillWithHelpers(
     party.map((character) => ({
       id: character.id,
@@ -178,16 +254,21 @@ export function BattleArena({
           return (
             <span
               key={value}
-              className={`rounded-full border px-3 py-1 text-xs font-semibold ${
+              className={`flex items-center gap-1 rounded-full border px-3 py-1 text-xs font-semibold ${
                 wonBoss
                   ? "border-amber-300/50 bg-amber-300/15 text-amber-100"
                   : "border-slate-700 text-slate-400"
               }`}
             >
-              ★{value}{" "}
-              {wonBoss
-                ? `勝利済み（${BOSS_CATALOG[wonBoss].icon} ${BOSS_CATALOG[wonBoss].name}）`
-                : "未挑戦"}
+              ★{value}
+              {wonBoss ? (
+                <>
+                  <BossSprite bossId={wonBoss} className="h-5 w-5" />
+                  勝利済み
+                </>
+              ) : (
+                " 未挑戦"
+              )}
             </span>
           );
         })}
@@ -198,9 +279,8 @@ export function BattleArena({
         <h2 id="choose-boss" className="mb-3 text-lg font-black text-white">
           1. ボスを選ぶ
         </h2>
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
           {BOSS_IDS.map((id) => {
-            const definition = BOSS_CATALOG[id];
             const isSelected = id === bossId;
 
             return (
@@ -212,27 +292,18 @@ export function BattleArena({
                   setMessage("");
                 }}
                 aria-pressed={isSelected}
-                className={`flex flex-col items-start gap-2 rounded-2xl border p-3 text-left transition ${
+                className={`flex flex-col items-center gap-2 rounded-2xl border p-3 text-center transition ${
                   isSelected
                     ? "border-amber-300 bg-amber-300/10"
                     : "border-slate-800 bg-slate-900/60 hover:border-slate-600"
                 }`}
               >
-                <span className="text-3xl" aria-hidden="true">
-                  {definition.icon}
-                </span>
+                <BossSprite
+                  bossId={id}
+                  className={`h-20 w-20 ${isSelected ? "battle-idle" : ""}`}
+                />
                 <span className="text-sm font-bold text-white">
-                  {definition.name}
-                </span>
-                <span className="flex flex-wrap gap-1">
-                  {definition.traits.slice(0, 2).map((trait) => (
-                    <span
-                      key={trait}
-                      className="rounded-full bg-slate-800 px-2 py-0.5 text-[11px] text-slate-300"
-                    >
-                      {trait}
-                    </span>
-                  ))}
+                  {BOSS_CATALOG[id].name}
                 </span>
               </button>
             );
@@ -240,26 +311,14 @@ export function BattleArena({
         </div>
 
         {/* 選んだボスの情報 */}
-        <div className="mt-4 grid gap-4 rounded-2xl border border-slate-800 bg-slate-900/60 p-4 sm:grid-cols-[auto_1fr]">
-          <span
-            aria-hidden="true"
-            className="grid h-20 w-20 place-items-center rounded-2xl bg-gradient-to-br from-violet-900 to-slate-950 text-5xl"
-          >
-            {boss.icon}
-          </span>
+        <div className="mt-4 grid items-center gap-4 rounded-2xl border border-slate-800 bg-gradient-to-br from-violet-950/60 to-slate-900/60 p-4 sm:grid-cols-[auto_1fr]">
+          <BossSprite
+            bossId={bossId}
+            className="battle-idle mx-auto h-36 w-36"
+          />
           <div className="space-y-2">
             <p className="text-lg font-black text-white">{boss.name}</p>
             <p className="text-sm text-slate-300">{boss.description}</p>
-            <ul className="flex flex-wrap gap-1.5">
-              {boss.traits.map((trait) => (
-                <li
-                  key={trait}
-                  className="rounded-full border border-violet-400/30 bg-violet-400/10 px-2 py-0.5 text-xs text-violet-100"
-                >
-                  {trait}
-                </li>
-              ))}
-            </ul>
             <p className="text-sm text-slate-300">
               <span className="font-semibold text-white">おすすめの役割：</span>
               {boss.recommendedRoles
@@ -344,45 +403,24 @@ export function BattleArena({
           </button>
         </div>
 
-        {/* 選んだパーティー */}
-        <div className="mb-4 flex flex-wrap gap-2">
-          {party.map((character) => (
-            <span
-              key={character.id}
-              className="flex items-center gap-2 rounded-xl border border-amber-300/50 bg-amber-300/10 px-2 py-1 text-sm text-white"
-            >
-              <Image
-                src={character.imagePath}
-                alt=""
-                width={28}
-                height={28}
-                className="h-7 w-7"
+        {/* 出陣するパーティー（3つの枠） */}
+        <div className="mx-auto mb-5 grid max-w-2xl grid-cols-3 gap-3">
+          {Array.from({ length: MAX_PARTY_SIZE }, (_, index) => {
+            const character = party[index];
+            const helper = character ? undefined : helpers[index - party.length];
+
+            return (
+              <PartySlot
+                key={character?.id ?? `empty-${index}`}
+                character={character}
+                helper={helper}
+                onRemove={() => character && togglePartyMember(character.id)}
               />
-              {character.name} Lv{character.level}
-            </span>
-          ))}
-          {helpers.map((helper) => (
-            <span
-              key={helper.id}
-              className="flex items-center gap-2 rounded-xl border border-dashed border-slate-600 px-2 py-1 text-sm text-slate-300"
-            >
-              <Image
-                src={getCharacterEvolution(helper.characterType, helper.level).imagePath}
-                alt=""
-                width={28}
-                height={28}
-                className="h-7 w-7 opacity-80"
-              />
-              🤝 {helper.name} Lv{helper.level}
-            </span>
-          ))}
-          {party.length === 0 && (
-            <span className="text-sm text-slate-400">
-              下からキャラクターを選んでください
-            </span>
-          )}
+            );
+          })}
         </div>
 
+        {/* 選べるキャラクター */}
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {characters.map((character) => {
             const isSelected = partyIds.includes(character.id);
@@ -423,6 +461,11 @@ export function BattleArena({
                         おすすめ
                       </span>
                     )}
+                    {isSelected && (
+                      <span className="text-[11px] font-semibold text-amber-300">
+                        出陣中
+                      </span>
+                    )}
                   </span>
                   <span className="grid grid-cols-5 gap-1 text-center text-[10px] text-slate-400">
                     {STAT_KEYS.map((key) => (
@@ -449,17 +492,49 @@ export function BattleArena({
         </div>
       </section>
 
-      {/* 挑む */}
-      <div className="sticky bottom-4 z-10 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-700 bg-slate-900/95 p-4 shadow-2xl backdrop-blur">
-        <p className="text-sm text-slate-200">
-          {boss.icon} {boss.name} <Stars count={star} /> に{" "}
-          {party.length > 0
-            ? `${party.map((character) => character.name).join("・")}${
-                helpers.length > 0 ? "（＋助っ人）" : ""
-              }`
-            : "…"}
-          で挑む
-        </p>
+      {/* 挑む（パーティー → ボス の絵で見せる） */}
+      <div className="sticky bottom-4 z-10 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-700 bg-slate-900/95 p-3 shadow-2xl backdrop-blur">
+        <div className="flex items-center gap-3">
+          <p className="sr-only">
+            {party.map((character) => character.name).join("・")}
+            {helpers.length > 0 ? "と助っ人" : ""}で，{boss.name}の★{star}に挑む
+          </p>
+          <div className="flex -space-x-2">
+            {party.map((character) => (
+              <Image
+                key={character.id}
+                src={character.imagePath}
+                alt=""
+                width={48}
+                height={48}
+                className="h-12 w-12 rounded-xl border border-amber-300/60 bg-slate-800"
+              />
+            ))}
+            {helpers.map((helper) => (
+              <Image
+                key={helper.id}
+                src={getCharacterEvolution(helper.characterType, helper.level).imagePath}
+                alt=""
+                width={48}
+                height={48}
+                className="h-12 w-12 rounded-xl border border-dashed border-slate-500 bg-slate-800 opacity-60"
+              />
+            ))}
+            {party.length === 0 && (
+              <span className="grid h-12 w-12 place-items-center rounded-xl border border-dashed border-slate-600 text-xs text-slate-500">
+                ？
+              </span>
+            )}
+          </div>
+          <span aria-hidden="true" className="text-xl font-black text-red-400">
+            ⚔️
+          </span>
+          <div className="flex items-center gap-2">
+            <BossSprite bossId={bossId} className="h-12 w-12" />
+            <Stars count={star} />
+          </div>
+        </div>
+
         <div className="flex items-center gap-3">
           {message && (
             <p role="alert" className="text-sm font-semibold text-red-300">
@@ -476,18 +551,28 @@ export function BattleArena({
               ? "戦っています…"
               : isStarWon
                 ? `今週の★${star}は勝利済み`
-                : "⚔️ 挑む"}
+                : party.length === 0
+                  ? "キャラクターを選んでください"
+                  : "⚔️ 挑む"}
           </button>
         </div>
       </div>
 
-      {/* 持っている素材 */}
-      <section aria-labelledby="materials">
-        <h2 id="materials" className="mb-1 text-lg font-black text-white">
-          🎒 持っている素材
-        </h2>
+      {/* 持ち物（所持金と素材） */}
+      <section
+        aria-labelledby="belongings"
+        className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4"
+      >
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+          <h2 id="belongings" className="text-lg font-black text-white">
+            🎒 持ち物
+          </h2>
+          <p className="rounded-full border border-amber-300/40 bg-amber-300/10 px-4 py-1 text-base font-bold text-amber-200">
+            所持金 💰 {gold} G
+          </p>
+        </div>
         <p className="mb-3 text-xs text-slate-400">
-          ボスに勝つと手に入ります．これから作る工房で，武器や防具の材料になります．
+          素材はボスに勝つと手に入ります．これから作る工房で，武器や防具の材料になります．
         </p>
         {MATERIAL_IDS.some((id) => status.materials[id]) ? (
           <ul className="flex flex-wrap gap-2">
