@@ -49,14 +49,10 @@ export default async function BattlePage() {
           <div>
             <h1 className="text-3xl font-black text-white">⚔️ ボス戦</h1>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-400">
-              毎週，★1〜★5 に1回ずつ勝つと，ゴールドと素材がもらえます．
+              毎週，★1〜★5 にそれぞれ1回ずつ挑戦できます．勝つと，ゴールドと素材がもらえます．
               好きなボスに挑めて，負けても何度でも挑み直せます．毎週月曜日（日本時間）に新しくなります．
             </p>
           </div>
-
-          <p className="rounded-full border border-amber-300/40 bg-amber-300/10 px-4 py-1.5 text-lg font-bold text-amber-200">
-            所持金 💰 {inventory.gold} G
-          </p>
         </div>
 
         <BattleArena
@@ -71,6 +67,7 @@ export default async function BattlePage() {
             ).imagePath,
           }))}
           status={status}
+          gold={inventory.gold}
         />
       </div>
     </main>

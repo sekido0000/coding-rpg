@@ -12,10 +12,12 @@ import {
   useState,
   useTransition,
   type CSSProperties,
+  type ReactNode,
   type PointerEvent as ReactPointerEvent,
 } from "react";
 
 import { openQuestPanel } from "@/components/quests/quest-panel";
+import { Spinner } from "@/components/ui/spinner";
 import { EquipmentLayers } from "@/components/items/equipment-layers";
 import {
   FlowerBed,
@@ -208,7 +210,7 @@ function SpeechBubble({
 }
 
 // 建物の札（家の名前など）
-function Nameplate({ children }: { children: string }) {
+function Nameplate({ children }: { children: ReactNode }) {
   return (
     <span className="pointer-events-none absolute left-1/2 top-full mt-0.5 -translate-x-1/2 whitespace-nowrap rounded bg-slate-950/75 px-1.5 py-0.5 text-[11px] font-bold text-white">
       {children}
@@ -291,7 +293,7 @@ function getLotLabel(lot: Lot, owner?: Character) {
     case "general_store":
       return "🏪 雑貨店";
     case "dungeon_gate":
-      return "⚔️ ダンジョンの入口";
+      return "⚔️ ボスに挑む";
     case "building": {
       const building = BUILDING_CATALOG[lot.buildingId!];
 
@@ -377,6 +379,8 @@ function LotBuilding({
   onDragStart: (lot: Lot, event: ReactPointerEvent) => void;
 }) {
   const router = useRouter();
+  // ボス戦のページへ移っている間は，押せたことが分かるよう「移動中…」を出す
+  const [isNavigating, startNavigation] = useTransition();
   const style: CSSProperties = {
     left: lot.x,
     top: lot.bottom,
@@ -437,7 +441,7 @@ function LotBuilding({
     } else if (lot.kind === "quest_board") {
       openQuestPanel();
     } else if (lot.kind === "dungeon_gate") {
-      router.push("/battle");
+      startNavigation(() => router.push("/battle"));
     }
   };
 
@@ -456,7 +460,7 @@ function LotBuilding({
         isBuildMode
           ? `${label}（ドラッグで移す・押すと移す/取り壊す）`
           : lot.kind === "dungeon_gate"
-            ? `${label}（ボス戦へ）`
+            ? `${label}（ボス戦のページへ）`
             : `${label}（中をのぞく）`
       }
       className={`${base} ${clickable} ${
@@ -485,7 +489,16 @@ function LotBuilding({
         />
       )}
 
-      <Nameplate>{label}</Nameplate>
+      <Nameplate>
+        {isNavigating ? (
+          <span className="inline-flex items-center gap-1.5">
+            <Spinner />
+            移動中…
+          </span>
+        ) : (
+          label
+        )}
+      </Nameplate>
     </button>
   );
 }
