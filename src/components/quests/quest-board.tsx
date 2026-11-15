@@ -54,8 +54,20 @@ function QuestRow({ item }: { item: QuestBoardItem }) {
   const goal = getNextGoal(item);
   const rate = isFailed ? 0 : Math.min(value / goal, 1);
 
-  // 達成したのに，まだ報酬を渡していない段階の数
-  const pendingStages = achievedStages - claimedStages;
+  const sumRewards = (from: number, to: number) =>
+    quest.rewards
+      .slice(from, to)
+      .reduce((total, gold) => total + gold, 0);
+
+  // 達成したのに，まだ渡していない報酬
+  const pendingGold = sumRewards(claimedStages, achievedStages);
+
+  const rewardText =
+    pendingGold > 0
+      ? `🎁 +${pendingGold} G は次の push で受け取り`
+      : isCompleted
+        ? `報酬 計 ${sumRewards(0, quest.stages.length)} G`
+        : `次の★ +${quest.rewards[achievedStages]} G`;
 
   const status = isFailed
     ? "理由なし・あいまいなコミットがあったので失敗"
@@ -128,11 +140,7 @@ function QuestRow({ item }: { item: QuestBoardItem }) {
           {status}
         </p>
 
-        <p className="text-amber-200/80">
-          {pendingStages > 0
-            ? `🎁 +${pendingStages * quest.goldPerStage} G は次の push で受け取り`
-            : `★1つ +${quest.goldPerStage} G`}
-        </p>
+        <p className="text-amber-200/80">{rewardText}</p>
       </div>
 
       {isFailed && (

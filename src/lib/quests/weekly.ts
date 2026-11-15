@@ -16,8 +16,8 @@ export type WeeklyQuest = {
   unit: string;
   // 段階（★）ごとの目標．毎回クエストは1段階だけ
   stages: readonly number[];
-  // 段階1つごとの報酬
-  goldPerStage: number;
+  // 段階（★）ごとの報酬．★が増えるほど多くする
+  rewards: readonly number[];
 };
 
 export const WEEKLY_QUESTS: readonly WeeklyQuest[] = [
@@ -27,7 +27,7 @@ export const WEEKLY_QUESTS: readonly WeeklyQuest[] = [
     description: "経験値が入ったコミットの回数",
     unit: "回",
     stages: [1, 3, 5],
-    goldPerStage: 10,
+    rewards: [10, 20, 30],
   },
   {
     id: "days",
@@ -35,7 +35,7 @@ export const WEEKLY_QUESTS: readonly WeeklyQuest[] = [
     description: "コミットした日の数（日本時間）",
     unit: "日",
     stages: [1, 2, 3],
-    goldPerStage: 10,
+    rewards: [10, 20, 30],
   },
   {
     id: "xp",
@@ -43,7 +43,7 @@ export const WEEKLY_QUESTS: readonly WeeklyQuest[] = [
     description: "コミットで得た経験値の合計",
     unit: "XP",
     stages: [30, 60, 100],
-    goldPerStage: 10,
+    rewards: [10, 20, 30],
   },
   {
     id: "every_time",
@@ -52,7 +52,7 @@ export const WEEKLY_QUESTS: readonly WeeklyQuest[] = [
       "今週のコミットを全部「理由つき・分かるメッセージ」にする",
     unit: "回",
     stages: [3],
-    goldPerStage: 20,
+    rewards: [30],
   },
 ];
 
@@ -198,7 +198,7 @@ export function getQuestRewards(
     Array.from({ length: achievedStages }, (_, index) => ({
       quest_id: quest.id,
       stage: index + 1,
-      gold: quest.goldPerStage,
+      gold: quest.rewards[index],
     })),
   );
 }
