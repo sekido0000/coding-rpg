@@ -1,33 +1,88 @@
-import type { WeeklyQuestBoard } from "@/data/quests";
-import type { QuestProgress } from "@/lib/quests/weekly";
+import type {
+  QuestBoardItem,
+  WeeklyQuestBoard,
+} from "@/data/quests";
 
 type QuestBoardProps = {
   board: WeeklyQuestBoard;
 };
 
 // 次の段階の目標（全部達成した時は最後の目標）
-function getNextGoal({ quest, achievedStages }: QuestProgress) {
+function getNextGoal({ quest, achievedStages }: QuestBoardItem) {
   return (
     quest.stages[achievedStages] ??
     quest.stages[quest.stages.length - 1]
   );
 }
 
-function QuestRow({ item }: { item: QuestProgress }) {
-  const { quest, value, achievedStages, isFailed } = item;
+/*
+ * 達成・失敗したクエストに，斜めに押すハンコ．
+ * 押した瞬間のように，少し大きい状態から縮んで止まる．
+ */
+function Stamp({ kind }: { kind: "done" | "failed" }) {
+  const isDone = kind === "done";
+
+  return (
+    <span
+      aria-hidden="true"
+      className={`
+        quest-stamp pointer-events-none absolute right-4 top-1/2
+        rounded-lg border-4 border-double px-3 py-0.5
+        text-2xl font-black tracking-[0.2em]
+        ${
+          isDone
+            ? "border-red-500/80 text-red-500/85"
+            : "border-slate-400/70 text-slate-400/80"
+        }
+      `}
+    >
+      {isDone ? "達成" : "失敗"}
+    </span>
+  );
+}
+
+function QuestRow({ item }: { item: QuestBoardItem }) {
+  const {
+    quest,
+    value,
+    achievedStages,
+    claimedStages,
+    isFailed,
+  } = item;
+
   const isCompleted = achievedStages === quest.stages.length;
   const goal = getNextGoal(item);
   const rate = isFailed ? 0 : Math.min(value / goal, 1);
 
+  // 達成したのに，まだ報酬を渡していない段階の数
+  const pendingStages = achievedStages - claimedStages;
+
+  const status = isFailed
+    ? "理由なし・あいまいなコミットがあったので失敗"
+    : isCompleted
+      ? "全部達成！"
+      : `${value} / ${goal} ${quest.unit}`;
+
   return (
     <li
-      className={`rounded-xl border p-3 ${
-        isCompleted
-          ? "border-amber-300/40 bg-amber-300/10"
-          : "border-slate-700/80 bg-white/5"
+      className={`relative overflow-hidden rounded-xl border p-3 ${
+        isFailed
+          ? "border-red-400/30 bg-slate-950/60"
+          : isCompleted
+            ? "border-amber-300/40 bg-amber-300/10"
+            : "border-slate-700/80 bg-white/5"
       }`}
     >
-      <div className="flex items-start justify-between gap-3">
+      {/* 画面読み上げ向けに，達成・失敗を文字でも伝える */}
+      <span className="sr-only">
+        {isFailed ? "失敗" : isCompleted ? "達成" : ""}
+      </span>
+
+      <div
+        className={`flex items-start justify-between gap-3 ${
+          isFailed ? "opacity-50" : ""
+        }`}
+      >
         <div className="min-w-0">
           <p className="font-bold text-white">{quest.title}</p>
           <p className="mt-0.5 text-xs leading-5 text-slate-400">
@@ -64,19 +119,31 @@ function QuestRow({ item }: { item: QuestProgress }) {
         />
       </div>
 
-      <div className="mt-1.5 flex items-center justify-between text-xs">
-        <p className={isFailed ? "text-slate-500" : "text-slate-300"}>
-          {isFailed
-            ? "今週は理由なしのコミットがあったので，来週また挑戦"
-            : isCompleted
-              ? "達成！"
-              : `${value} / ${goal} ${quest.unit}`}
+      <div className="mt-1.5 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-xs">
+        <p
+          className={
+            isFailed ? "font-semibold text-red-300" : "text-slate-300"
+          }
+        >
+          {status}
         </p>
 
         <p className="text-amber-200/80">
-          ★1つ +{quest.goldPerStage} G
+          {pendingStages > 0
+            ? `🎁 +${pendingStages * quest.goldPerStage} G は次の push で受け取り`
+            : `★1つ +${quest.goldPerStage} G`}
         </p>
       </div>
+
+      {isFailed && (
+        <p className="mt-1 text-xs text-slate-500">
+          来週また挑戦できます
+        </p>
+      )}
+
+      {(isCompleted || isFailed) && (
+        <Stamp kind={isFailed ? "failed" : "done"} />
+      )}
     </li>
   );
 }
