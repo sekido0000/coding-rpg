@@ -37,6 +37,14 @@ export function useDragScroll(ref: RefObject<HTMLElement | null>) {
         return;
       }
 
+      // 建築モードで建物をドラッグする時は，世界を動かさない
+      if (
+        event.target instanceof Element &&
+        event.target.closest("[data-build-draggable]")
+      ) {
+        return;
+      }
+
       start = {
         x: event.clientX,
         y: event.clientY,

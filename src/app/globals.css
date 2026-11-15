@@ -327,6 +327,80 @@ body {
   }
 }
 
+/* ---------- 建てた建物 ---------- */
+
+/* どんぶりの湯気：ゆらゆら上って消える */
+.interior-steam {
+  animation: interior-steam 1.8s ease-out infinite;
+  opacity: 0;
+}
+
+/* ゲーム機や機械の画面：明るさが変わる */
+.interior-screen {
+  animation: interior-screen 1.2s ease-in-out infinite alternate;
+}
+
+/* 研究所の煙：ときどき，ぽんと出て消える */
+.lab-smoke {
+  animation: lab-smoke 4s ease-out infinite;
+  opacity: 0;
+}
+
+/* ゲームセンターの看板：外から見ても光っている */
+.arcade-glow {
+  animation: arcade-glow 1.6s ease-in-out infinite alternate;
+}
+
+@keyframes interior-steam {
+  0% {
+    opacity: 0;
+    translate: 0 0;
+  }
+  30% {
+    opacity: 0.8;
+  }
+  100% {
+    opacity: 0;
+    translate: 4px -24px;
+  }
+}
+
+@keyframes interior-screen {
+  from {
+    filter: brightness(0.85);
+  }
+  to {
+    filter: brightness(1.25) drop-shadow(0 0 6px rgb(244 114 182 / 0.7));
+  }
+}
+
+@keyframes lab-smoke {
+  0%,
+  60% {
+    opacity: 0;
+    scale: 0.4;
+    translate: 0 0;
+  }
+  70% {
+    opacity: 0.9;
+    scale: 1;
+  }
+  100% {
+    opacity: 0;
+    scale: 2;
+    translate: 0 -40px;
+  }
+}
+
+@keyframes arcade-glow {
+  from {
+    filter: drop-shadow(0 0 2px rgb(244 114 182 / 0.4));
+  }
+  to {
+    filter: drop-shadow(0 0 10px rgb(34 211 238 / 0.9));
+  }
+}
+
 /* ---------- 称号 ---------- */
 
 /* 金の称号：ときどき光の筋が横切る */
@@ -548,6 +622,8 @@ body {
   .world-level-up,
   .quest-stamp,
   .title-rainbow,
+  .interior-screen,
+  .arcade-glow,
   .room-walk,
   .room-typing,
   .room-stretch,
@@ -557,6 +633,13 @@ body {
   .aura-flicker,
   .aura-spin {
     animation: none;
+  }
+
+  /* 湯気や煙は出さない */
+  .interior-steam,
+  .lab-smoke {
+    animation: none;
+    opacity: 0;
   }
 
   /* 寝ている時の Z は，動かさずに表示しておく */

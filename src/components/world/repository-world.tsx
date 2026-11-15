@@ -7,8 +7,11 @@ import {
   useEffect,
   useMemo,
   useRef,
+  useOptimistic,
   useState,
+  useTransition,
   type CSSProperties,
+  type PointerEvent as ReactPointerEvent,
 } from "react";
 
 import { openQuestPanel } from "@/components/quests/quest-panel";
@@ -22,6 +25,7 @@ import {
   Tree,
   Well,
   Bench,
+  BUILDING_EXTERIORS,
 } from "@/components/world/buildings";
 import { useConversations } from "@/components/world/use-conversations";
 import { useDragScroll } from "@/components/world/use-drag-scroll";
@@ -41,20 +45,37 @@ import { getCharacterEvolution } from "@/lib/characters/catalog";
 import type { ActivitySummary } from "@/lib/world/activity";
 import {
   buildWorldMap,
-  pickRoadTarget,
-  planRoute,
+  findLotAt,
   ROAD_WIDTH,
   TILE,
   type Lot,
   type WorldMap,
 } from "@/lib/world/map";
+import { getDepth, type Position } from "@/lib/world/movement";
 import {
-  getDepth,
-  getWalkDuration,
-  pickIdleTime,
-  type Position,
-} from "@/lib/world/movement";
+  BUILDING_CATALOG,
+  houseLotKey,
+  isBuildingId,
+  type BuildingId,
+  type HouseLotKey,
+  type LotKey,
+  type Placement,
+} from "@/lib/buildings/catalog";
 import type { Character } from "@/types/character";
+import {
+  demolishBuildingAction,
+  moveBuildingAction,
+  purchaseBuildingAction,
+  type BuildingActionResult,
+} from "@/app/actions/building-actions";
+import { BuildingInterior } from "@/components/world/building-interiors";
+import { BuildMenu, ManageLot } from "@/components/world/build-menus";
+import {
+  getInitialWalker,
+  stepWalker,
+  type VisitTarget,
+  type Walker,
+} from "@/components/world/walker";
 
 /*
  * 見出しに使うドット文字のフォント．
@@ -75,28 +96,41 @@ type RepositoryWorldProps = {
   hasPendingRewards: boolean;
   // 持っているゴールドと装備（雑貨店の中で買い物をする時に使う）
   inventory: Inventory;
+  // 建物の場所（建てた建物と，移した家・掲示板・雑貨店）
+  placements: Placement[];
 };
+
+// 建物の場所の変更（押した瞬間に表示を切り替えるために使う）
+type PlacementChange =
+  | { kind: "place"; placement: Placement }
+  | { kind: "remove"; key: LotKey }
+  // まだ場所を保存していない家・掲示板・雑貨店を，今の場所のまま保存する
+  | { kind: "freeze"; placements: Placement[] };
 
 // 中の様子を開いている建物
 type OpenBuilding =
   | { kind: "house"; characterId: string }
-  | { kind: "store" };
+  | { kind: "store" }
+  | { kind: "building"; buildingId: BuildingId };
 
-type Walker = {
-  position: Position;
-  // 今の場所まで歩いてくるのにかける時間（ミリ秒）
-  duration: number;
-  isFacingLeft: boolean;
-  // 今の場所に着く時刻
-  arrivedAt: number;
-  // 次に歩き出す時刻（会話中は Infinity にして止める）
-  nextMoveAt: number;
-  // この先に通る場所（道に沿って歩いている途中）
-  route: Position[];
-  // 自分の家に帰る途中
-  isGoingHome: boolean;
-  // 家の中にいる間は，この時刻まで出てこない（0 の時は外にいる）
-  insideUntil: number;
+/*
+ * 建築モードで開いている画面．
+ * - build：空いた区画を押して，建てる建物を選ぶ
+ * - manage：建物を押して，移すか（建てた建物は）取り壊すかを選ぶ
+ * - move：移す先の空いた区画を選んでいる
+ */
+type BuildAction =
+  | { kind: "build"; row: 0 | 1; offset: number }
+  | { kind: "manage"; key: LotKey }
+  | { kind: "move"; key: LotKey };
+
+// 建物をドラッグしている時の，地図の上の位置
+type Dragging = {
+  key: LotKey;
+  x: number;
+  y: number;
+  // 押した位置から動かしたか（動かしていなければ，離した時は押したのと同じにする）
+  hasMoved: boolean;
 };
 
 // 歩き出すかを確かめる間隔（ミリ秒）
@@ -105,125 +139,8 @@ const TICK_INTERVAL = 500;
 // 最初に歩き出すまでの時間の最大（全員が同時に動き出さないようにずらす）
 const FIRST_MOVE_DELAY = 3000;
 
-// 次の行き先を選ぶ時に，自分の家に帰る確率
-const GO_HOME_CHANCE = 0.2;
-
-// 家の中にいる時間（ミリ秒）
-const INSIDE_TIME = {
-  min: 30000,
-  max: 60000,
-} as const;
-
 // キャラクターの重なり順の上限．押せるものや吹き出しは，これより手前に出す
 const FRONT_DEPTH = 5000;
-
-// 最初は自分の家の前に立つ（サーバーとブラウザで同じ画面になるよう，乱数は使わない）
-function getInitialWalker(door: Position): Walker {
-  return {
-    position: door,
-    duration: 0,
-    isFacingLeft: false,
-    arrivedAt: 0,
-    nextMoveAt: 0,
-    route: [],
-    isGoingHome: false,
-    insideUntil: 0,
-  };
-}
-
-// 次の場所へ歩き出す
-function walkTo(
-  walker: Walker,
-  route: Position[],
-  now: number,
-): Walker {
-  const [target, ...rest] = route;
-  const duration = getWalkDuration(walker.position, target);
-  const isLast = rest.length === 0;
-
-  return {
-    ...walker,
-    position: target,
-    duration,
-    // 真上・真下に歩く時は，向きを変えない
-    isFacingLeft:
-      target.x === walker.position.x
-        ? walker.isFacingLeft
-        : target.x < walker.position.x,
-    arrivedAt: now + duration,
-    // 途中の曲がり角では止まらず，最後の場所に着いたら少し休む
-    nextMoveAt:
-      now +
-      duration +
-      (isLast && !walker.isGoingHome ? pickIdleTime(Math.random) : 0),
-    route: rest,
-  };
-}
-
-function isSamePosition(a: Position, b: Position) {
-  return a.x === b.x && a.y === b.y;
-}
-
-/*
- * 1人のキャラクターの次の動きを決める．
- * 動かない時は，受け取った walker をそのまま返す．
- */
-function stepWalker(
-  walker: Walker,
-  door: Position,
-  map: WorldMap,
-  now: number,
-): Walker {
-  // 家の中にいる
-  if (walker.insideUntil > now) {
-    return walker;
-  }
-
-  // 家から出てきた
-  if (walker.insideUntil > 0) {
-    return {
-      ...walker,
-      insideUntil: 0,
-      nextMoveAt: now + pickIdleTime(Math.random),
-    };
-  }
-
-  if (now < walker.nextMoveAt) {
-    return walker;
-  }
-
-  // 道の途中なら，次の曲がり角へ
-  if (walker.route.length > 0) {
-    return walkTo(walker, walker.route, now);
-  }
-
-  if (walker.isGoingHome) {
-    // 家の前に着いたら，中に入る
-    if (isSamePosition(walker.position, door)) {
-      return {
-        ...walker,
-        isGoingHome: false,
-        insideUntil:
-          now +
-          INSIDE_TIME.min +
-          (INSIDE_TIME.max - INSIDE_TIME.min) * Math.random(),
-      };
-    }
-
-    // 会話などで寄り道した時は，改めて家へ向かう
-    return walkTo(walker, planRoute(map, walker.position, door), now);
-  }
-
-  // 次の行き先を選ぶ
-  const isGoingHome = Math.random() < GO_HOME_CHANCE;
-  const target = isGoingHome ? door : pickRoadTarget(map, Math.random);
-
-  return walkTo(
-    { ...walker, isGoingHome },
-    planRoute(map, walker.position, target),
-    now,
-  );
-}
 
 const SPEECH_STYLES: Record<
   Speech["kind"],
@@ -297,23 +214,161 @@ function Nameplate({ children }: { children: string }) {
   );
 }
 
+// 区画に建つ建物の絵（ドラッグ中の影にも使う）
+function LotArt({
+  lot,
+  houseIndex,
+  hasPendingRewards,
+}: {
+  lot: Lot;
+  houseIndex: number;
+  hasPendingRewards: boolean;
+}) {
+  switch (lot.kind) {
+    case "house":
+      return (
+        <House colors={HOUSE_COLORS[houseIndex % HOUSE_COLORS.length]} />
+      );
+    case "quest_board":
+      return <QuestBoardSign hasNotice={hasPendingRewards} />;
+    case "general_store":
+      return <GeneralStore />;
+    case "building": {
+      const Exterior = BUILDING_EXTERIORS[lot.buildingId!];
+
+      return <Exterior />;
+    }
+    default:
+      return null;
+  }
+}
+
+// 空いた区画の飾り
+function LotDecorationArt({ lot }: { lot: Lot }) {
+  if (lot.decoration === "grove") {
+    return (
+      <>
+        <Tree />
+        <span className="-ml-6 mb-3 block">
+          <Tree />
+        </span>
+      </>
+    );
+  }
+
+  if (lot.decoration === "well") {
+    return <Well />;
+  }
+
+  if (lot.decoration === "bench") {
+    return (
+      <>
+        <FlowerBed />
+        <Bench />
+      </>
+    );
+  }
+
+  return (
+    <>
+      <FlowerBed />
+      <FlowerBed />
+    </>
+  );
+}
+
+// 建物の名前（札やお知らせに使う）
+function getLotLabel(lot: Lot, owner?: Character) {
+  switch (lot.kind) {
+    case "house":
+      return owner ? `${owner.name}の家` : "家";
+    case "quest_board":
+      return "📜 クエスト掲示板";
+    case "general_store":
+      return "🏪 雑貨店";
+    case "building": {
+      const building = BUILDING_CATALOG[lot.buildingId!];
+
+      return `${building.icon} ${building.name}`;
+    }
+    default:
+      return "";
+  }
+}
+
+/*
+ * 建物の中にいるキャラクターを，外から分かるように屋根の上に出す吹き出し．
+ * 3人まで顔を並べ，それより多い時は「+2」のように数を出す．
+ */
+function VisitorsBubble({ visitors }: { visitors: Character[] }) {
+  if (visitors.length === 0) {
+    return null;
+  }
+
+  return (
+    <span
+      className="pointer-events-none absolute bottom-full left-1/2 mb-1 flex -translate-x-1/2 items-center gap-0.5 rounded-full bg-white px-1.5 py-0.5 shadow-lg"
+      aria-label={`${visitors.map((visitor) => visitor.name).join("・")}が中にいます`}
+    >
+      {visitors.slice(0, 3).map((visitor) => (
+        <Image
+          key={visitor.id}
+          src={
+            getCharacterEvolution(visitor.characterType, visitor.level)
+              .imagePath
+          }
+          alt=""
+          width={24}
+          height={24}
+          className="repo-pixel-image h-6 w-6"
+        />
+      ))}
+      {visitors.length > 3 && (
+        <span className="px-0.5 text-xs font-bold text-slate-700">
+          +{visitors.length - 3}
+        </span>
+      )}
+      <span className="absolute left-1/2 top-full -translate-x-1/2 border-x-[5px] border-t-[5px] border-x-transparent border-t-white" />
+    </span>
+  );
+}
+
 /*
  * 区画に建つ建物．足元（正面の下端）を区画の位置に合わせて置く．
- * 建物の札は，押せることが分かるよう，押せる建物だけ光らせる．
+ *
+ * ふだんは押すと中の様子を開く．建築モードでは，押すと移す・取り壊すを選べ，
+ * ドラッグして空いた区画へ移せる．空いた区画は，建築モードの時だけ押せる．
  */
 function LotBuilding({
   lot,
   houseIndex,
   owner,
   hasPendingRewards,
+  visitors,
+  isBuildMode,
+  movingKey,
+  isDropTarget,
+  isDragged,
   onOpen,
+  onBuildAction,
+  onDragStart,
 }: {
   lot: Lot;
   houseIndex: number;
   owner?: Character;
   hasPendingRewards: boolean;
-  // 建物を押した時に，中の様子を開く
+  // 中にいるキャラクター
+  visitors: Character[];
+  isBuildMode: boolean;
+  // 移す先を選んでいる建物
+  movingKey: LotKey | null;
+  // ドラッグしている建物を，この区画の上に重ねている
+  isDropTarget: boolean;
+  // この建物をドラッグしている
+  isDragged: boolean;
   onOpen: (building: OpenBuilding) => void;
+  onBuildAction: (lot: Lot) => void;
+  onDragStart: (lot: Lot, event: ReactPointerEvent) => void;
 }) {
   const style: CSSProperties = {
     left: lot.x,
@@ -324,80 +379,104 @@ function LotBuilding({
   const clickable =
     "rounded-lg outline-none transition hover:brightness-110 focus-visible:ring-2 focus-visible:ring-amber-300";
 
-  switch (lot.kind) {
-    case "house":
-      return owner ? (
-        <button
-          type="button"
-          onClick={() =>
-            onOpen({ kind: "house", characterId: owner.id })
-          }
-          aria-label={`${owner.name}の家（中をのぞく）`}
-          className={`${base} ${clickable}`}
-          style={style}
-        >
-          <House colors={HOUSE_COLORS[houseIndex % HOUSE_COLORS.length]} />
-          <Nameplate>{`${owner.name}の家`}</Nameplate>
-        </button>
-      ) : null;
-
-    case "quest_board":
-      return (
-        <button
-          type="button"
-          onClick={openQuestPanel}
-          aria-label="クエスト掲示板（今週のクエストを開く）"
-          className={`${base} ${clickable}`}
-          style={style}
-        >
-          <QuestBoardSign hasNotice={hasPendingRewards} />
-          <Nameplate>📜 クエスト掲示板</Nameplate>
-        </button>
-      );
-
-    case "general_store":
-      return (
-        <button
-          type="button"
-          onClick={() => onOpen({ kind: "store" })}
-          aria-label="雑貨店（中に入る）"
-          className={`${base} ${clickable}`}
-          style={style}
-        >
-          <GeneralStore />
-          <Nameplate>🏪 雑貨店</Nameplate>
-        </button>
-      );
-
-    case "empty":
+  if (lot.kind === "empty") {
+    // ふだんは飾りだけ（押せない）
+    if (!isBuildMode) {
       return (
         <div
           className={`${base} pointer-events-none flex items-end gap-2`}
           style={style}
         >
-          {lot.decoration === "grove" ? (
-            <>
-              <Tree />
-              <span className="-ml-6 mb-3 block">
-                <Tree />
-              </span>
-            </>
-          ) : lot.decoration === "well" ? (
-            <Well />
-          ) : lot.decoration === "bench" ? (
-            <>
-              <FlowerBed />
-              <Bench />
-            </>
-          ) : (
-            <>
-              <FlowerBed />
-              <FlowerBed />
-            </>
-          )}
+          <LotDecorationArt lot={lot} />
         </div>
       );
+    }
+
+    // 建築モードでは，建てられる（移せる）区画として光らせる
+    return (
+      <button
+        type="button"
+        onClick={() => onBuildAction(lot)}
+        aria-label={movingKey ? "この区画へ移す" : "この区画に建てる"}
+        className={`${base} ${clickable} group/lot flex h-36 w-48 items-end justify-center gap-2 rounded-xl border-2 border-dashed ${
+          isDropTarget
+            ? "scale-105 border-amber-200 bg-amber-300/40"
+            : "border-amber-300/80 bg-amber-300/15"
+        }`}
+        style={style}
+      >
+        <span className="opacity-40">
+          <LotDecorationArt lot={lot} />
+        </span>
+        <span className="absolute inset-0 grid place-items-center">
+          <span className="rounded-full bg-amber-300 px-3 py-1 text-sm font-black text-slate-950 shadow-lg transition group-hover/lot:scale-110">
+            {movingKey || isDropTarget ? "ここへ移す" : "＋ 建てる"}
+          </span>
+        </span>
+      </button>
+    );
   }
+
+  const label = getLotLabel(lot, owner);
+
+  // ふだん押した時に開く画面（掲示板はクエストのパネル）
+  const open = () => {
+    if (lot.kind === "house" && owner) {
+      onOpen({ kind: "house", characterId: owner.id });
+    } else if (lot.kind === "general_store") {
+      onOpen({ kind: "store" });
+    } else if (lot.kind === "building" && lot.buildingId) {
+      onOpen({ kind: "building", buildingId: lot.buildingId });
+    } else if (lot.kind === "quest_board") {
+      openQuestPanel();
+    }
+  };
+
+  return (
+    <button
+      type="button"
+      onClick={() => (isBuildMode ? onBuildAction(lot) : open())}
+      onPointerDown={(event) => {
+        if (isBuildMode) {
+          onDragStart(lot, event);
+        }
+      }}
+      // 建築モードでドラッグする時は，指でのスクロールにしない
+      data-build-draggable={isBuildMode ? "true" : undefined}
+      aria-label={
+        isBuildMode
+          ? `${label}（ドラッグで移す・押すと移す/取り壊す）`
+          : `${label}（中をのぞく）`
+      }
+      className={`${base} ${clickable} ${
+        isBuildMode
+          ? "cursor-grab touch-none ring-2 ring-amber-300/80"
+          : ""
+      } ${movingKey === lot.key ? "animate-pulse" : ""} ${
+        isDragged ? "opacity-30" : ""
+      }`}
+      style={style}
+    >
+      {/* 中にいるキャラクター */}
+      {!isBuildMode && <VisitorsBubble visitors={visitors} />}
+
+      <LotArt
+        lot={lot}
+        houseIndex={houseIndex}
+        hasPendingRewards={hasPendingRewards}
+      />
+
+      {/* 研究所は，ときどき屋根から煙が出る */}
+      {lot.buildingId === "lab" && (
+        <span
+          aria-hidden="true"
+          className="lab-smoke absolute left-[78%] top-0 block h-5 w-5 rounded-full bg-slate-200/80"
+        />
+      )}
+
+      <Nameplate>{label}</Nameplate>
+    </button>
+  );
 }
 
 /*
@@ -427,18 +506,87 @@ export function RepositoryWorld({
   activity,
   hasPendingRewards,
   inventory,
+  placements,
 }: RepositoryWorldProps) {
   const [openBuilding, setOpenBuilding] = useState<OpenBuilding | null>(
     null,
   );
 
+  // 建築モード（空いた区画を押して建てる・建物を移す・取り壊す）
+  const [isBuildMode, setIsBuildMode] = useState(false);
+  const [buildAction, setBuildAction] = useState<BuildAction | null>(null);
+  // 建てた・移した・取り壊した時のお知らせ
+  const [buildMessage, setBuildMessage] = useState<string | null>(null);
+  // 建物をドラッグしている時の位置
+  const [dragging, setDragging] = useState<Dragging | null>(null);
+
+  /*
+   * 建物の場所．移した・建てた・取り壊した瞬間に表示を切り替え（楽観的更新），
+   * 保存は裏で行う．保存に失敗した時は，元の場所に戻る．
+   */
+  const [shownPlacements, changePlacement] = useOptimistic<
+    Placement[],
+    PlacementChange
+  >(placements, (current, change) => {
+    if (change.kind === "freeze") {
+      const saved = new Set(current.map((placement) => placement.key));
+
+      return [
+        ...current,
+        ...change.placements.filter((placement) => !saved.has(placement.key)),
+      ];
+    }
+
+    const others = current.filter((placement) =>
+      change.kind === "place"
+        ? placement.key !== change.placement.key
+        : placement.key !== change.key,
+    );
+
+    return change.kind === "place"
+      ? [...others, change.placement]
+      : others;
+  });
+  const [, startPlacementTransition] = useTransition();
+
   const characterIds = characters
     .map((character) => character.id)
     .join(",");
 
+  // 建物の並びが変わった時だけ，地図を作り直す
+  const placementsKey = shownPlacements
+    .map((placement) => `${placement.key}|${placement.row}|${placement.offset}`)
+    .sort()
+    .join(",");
+
   const map = useMemo(
-    () => buildWorldMap(characterIds.split(",").filter(Boolean)),
-    [characterIds],
+    () =>
+      buildWorldMap(
+        characterIds.split(",").filter(Boolean),
+        placementsKey
+          ? placementsKey.split(",").map((item) => {
+              const [key, row, offset] = item.split("|");
+
+              return {
+                key: key as LotKey,
+                row: Number(row) as 0 | 1,
+                offset: Number(offset),
+              };
+            })
+          : [],
+      ),
+    [characterIds, placementsKey],
+  );
+
+  // ほかのキャラクターの家の扉（遊びに行く先）
+  const houseDoors = useMemo(
+    () =>
+      new Map<HouseLotKey, Position>(
+        map.lots
+          .filter((lot) => lot.kind === "house" && lot.characterId)
+          .map((lot) => [houseLotKey(lot.characterId!), lot.door]),
+      ),
+    [map],
   );
 
   const doors = useMemo(
@@ -447,6 +595,23 @@ export function RepositoryWorld({
         map.lots
           .filter((lot) => lot.kind === "house" && lot.characterId)
           .map((lot) => [lot.characterId!, lot.door]),
+      ),
+    [map],
+  );
+
+  // 立ち寄れる建物の扉
+  const visitTargets = useMemo(
+    () =>
+      new Map<BuildingId, VisitTarget>(
+        map.lots
+          .filter((lot) => lot.kind === "building" && lot.buildingId)
+          .map((lot) => [
+            lot.buildingId!,
+            {
+              door: lot.door,
+              isIndoor: BUILDING_CATALOG[lot.buildingId!].isIndoor,
+            },
+          ]),
       ),
     [map],
   );
@@ -516,52 +681,80 @@ export function RepositoryWorld({
       }
 
       const now = Date.now();
+      const current = walkersRef.current;
+      const next = { ...current };
       const entered: string[] = [];
       const exited: string[] = [];
+      let hasChanged = false;
 
-      setWalkers((current) => {
-        const next = { ...current };
-        let hasChanged = false;
+      for (const id of ids) {
+        const door = doors.get(id);
+
+        if (!door) {
+          continue;
+        }
+
+        const walker = current[id];
+
+        // 初めての時は，少しずつずらして歩き出す
+        if (!walker) {
+          next[id] = {
+            ...getInitialWalker(door),
+            nextMoveAt: now + Math.random() * FIRST_MOVE_DELAY,
+          };
+          hasChanged = true;
+          continue;
+        }
+
+        // 遊びに行けるのは，自分以外のキャラクターの家
+        const friendHouses = new Map(houseDoors);
+        friendHouses.delete(houseLotKey(id));
+
+        const stepped = stepWalker(walker, {
+          map,
+          homeDoor: door,
+          buildings: visitTargets,
+          friendHouses,
+          now,
+          random: Math.random,
+        });
+
+        if (stepped !== walker) {
+          if (!walker.insideUntil && stepped.insideUntil) {
+            entered.push(id);
+          }
+
+          if (walker.insideUntil && !stepped.insideUntil) {
+            exited.push(id);
+          }
+
+          next[id] = stepped;
+          hasChanged = true;
+        }
+      }
+
+      if (!hasChanged) {
+        return;
+      }
+
+      /*
+       * 会話で歩み寄った分などを消さないよう，変わったキャラクターだけを書き換える．
+       * 中に入った・出てきたことは，書き換える前に分かるようにしておく
+       * （状態の更新の中で調べると，更新が遅れて取りこぼすため）．
+       */
+      setWalkers((latest) => {
+        const merged = { ...latest };
 
         for (const id of ids) {
-          const door = doors.get(id);
-
-          if (!door) {
-            continue;
-          }
-
-          const walker = current[id];
-
-          // 初めての時は，少しずつずらして歩き出す
-          if (!walker) {
-            next[id] = {
-              ...getInitialWalker(door),
-              nextMoveAt: now + Math.random() * FIRST_MOVE_DELAY,
-            };
-            hasChanged = true;
-            continue;
-          }
-
-          const stepped = stepWalker(walker, door, map, now);
-
-          if (stepped !== walker) {
-            if (!walker.insideUntil && stepped.insideUntil) {
-              entered.push(id);
-            }
-
-            if (walker.insideUntil && !stepped.insideUntil) {
-              exited.push(id);
-            }
-
-            next[id] = stepped;
-            hasChanged = true;
+          if (next[id] !== current[id]) {
+            merged[id] = next[id];
           }
         }
 
-        return hasChanged ? next : current;
+        return merged;
       });
 
-      // 家の中にいる間は，独り言や会話をしない
+      // 中にいる間は，独り言や会話をしない
       if (entered.length > 0) {
         setBusy(entered, true);
       }
@@ -574,7 +767,207 @@ export function RepositoryWorld({
     return () => {
       window.clearInterval(timer);
     };
-  }, [characterIds, doors, map, setBusy]);
+  }, [characterIds, doors, houseDoors, map, visitTargets, setBusy]);
+
+  // 建てた・移した・取り壊した時のお知らせを，しばらく出す
+  const showBuildMessage = (message: string) => {
+    setBuildMessage(message);
+    window.setTimeout(() => setBuildMessage(null), 4000);
+  };
+
+  /*
+   * 建物の場所を変える．押した瞬間に表示を切り替え，裏で保存する．
+   * 保存に失敗した時は，元の場所に戻ってお知らせを出す．
+   */
+  const changeLot = (
+    change: PlacementChange,
+    action: () => Promise<BuildingActionResult>,
+  ) =>
+    new Promise<BuildingActionResult>((resolve) => {
+      setBuildAction(null);
+
+      /*
+       * 場所を保存していない家・掲示板・雑貨店は，空いた区画に自動で並ぶ．
+       * そのままだと，建物を移して空いた場所へ別の家が詰めてきてしまうので，
+       * 変える前に今の並びを保存しておく（サーバーでも同じように保存する）．
+       */
+      const saved = new Set(shownPlacements.map((placement) => placement.key));
+      const autoPlaced = map.lots.flatMap((lot) =>
+        lot.key &&
+        !isBuildingId(lot.key) &&
+        !saved.has(lot.key)
+          ? [{ key: lot.key, row: lot.row, offset: lot.offset }]
+          : [],
+      );
+
+      startPlacementTransition(async () => {
+        if (autoPlaced.length > 0) {
+          changePlacement({ kind: "freeze", placements: autoPlaced });
+        }
+
+        changePlacement(change);
+        const result = await action();
+
+        showBuildMessage(result.message);
+        resolve(result);
+      });
+    });
+
+  // 建物を空いた区画へ移す
+  const moveLot = (key: LotKey, lot: Lot) =>
+    changeLot(
+      { kind: "place", placement: { key, row: lot.row, offset: lot.offset } },
+      () => moveBuildingAction(key, lot.row, lot.offset),
+    );
+
+  // 建築モードで，区画や建物を押した時
+  const handleBuildAction = (lot: Lot) => {
+    if (buildAction?.kind === "move") {
+      if (lot.kind === "empty") {
+        void moveLot(buildAction.key, lot);
+      }
+
+      return;
+    }
+
+    if (lot.kind === "empty") {
+      setBuildAction({ kind: "build", row: lot.row, offset: lot.offset });
+    } else if (lot.key) {
+      setBuildAction({ kind: "manage", key: lot.key });
+    }
+  };
+
+  /*
+   * 建築モードで，建物をドラッグして空いた区画へ移す．
+   * 押した位置から少し動かしたらドラッグとみなし，地図の上で建物の影を指に付いてこさせる．
+   * 動かさずに離した時は，押した時と同じ（移す・取り壊すを選ぶ画面）にする．
+   */
+  const groundRef = useRef<HTMLDivElement>(null);
+  const draggingRef = useRef<Dragging | null>(null);
+
+  const toMapPosition = (clientX: number, clientY: number) => {
+    const rect = groundRef.current?.getBoundingClientRect();
+
+    return rect
+      ? { x: clientX - rect.left, y: clientY - rect.top }
+      : { x: 0, y: 0 };
+  };
+
+  const handleDragStart = (lot: Lot, event: ReactPointerEvent) => {
+    if (!lot.key || event.button !== 0) {
+      return;
+    }
+
+    const start = { x: event.clientX, y: event.clientY };
+    const key = lot.key;
+
+    const onMove = (moveEvent: PointerEvent) => {
+      const hasMoved =
+        draggingRef.current?.hasMoved ||
+        Math.hypot(moveEvent.clientX - start.x, moveEvent.clientY - start.y) >
+          8;
+
+      if (!hasMoved) {
+        return;
+      }
+
+      const next = {
+        key,
+        ...toMapPosition(moveEvent.clientX, moveEvent.clientY),
+        hasMoved: true,
+      };
+
+      draggingRef.current = next;
+      setDragging(next);
+    };
+
+    const onUp = (upEvent: PointerEvent) => {
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+
+      const current = draggingRef.current;
+      draggingRef.current = null;
+      setDragging(null);
+
+      if (!current?.hasMoved) {
+        return;
+      }
+
+      // ドラッグした後のクリックで，移す・取り壊すの画面が開かないようにする
+      window.addEventListener(
+        "click",
+        (clickEvent) => {
+          clickEvent.stopPropagation();
+          clickEvent.preventDefault();
+        },
+        { capture: true, once: true },
+      );
+
+      const position = toMapPosition(upEvent.clientX, upEvent.clientY);
+      const target = findLotAt(map, position.x, position.y);
+
+      if (target?.kind === "empty") {
+        void moveLot(key, target);
+      } else if (target && target.key !== key) {
+        showBuildMessage("空いている区画にだけ移せます");
+      }
+    };
+
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+  };
+
+  // ドラッグしている建物を重ねている区画
+  const dropTarget = dragging
+    ? findLotAt(map, dragging.x, dragging.y)
+    : null;
+  const draggedLot = dragging
+    ? map.lots.find((lot) => lot.key === dragging.key)
+    : undefined;
+
+  const exitBuildMode = () => {
+    setIsBuildMode(false);
+    setBuildAction(null);
+  };
+
+  // 建物の中にいるキャラクター（中の様子と，屋根の上の吹き出しに出す）
+  const visitorsOf = (visit: string) =>
+    characters.filter((character) => {
+      const walker = walkers[character.id];
+
+      if (!walker) {
+        return false;
+      }
+
+      // 自分の家にいるキャラクターは，その家の中にいる
+      const insideOf =
+        walker.insideOf === "home"
+          ? houseLotKey(character.id)
+          : walker.insideOf;
+
+      return (
+        (insideOf === visit && walker.insideUntil > 0) ||
+        walker.restingAt === visit
+      );
+    });
+
+  const builtIds = new Set(
+    shownPlacements
+      .map((placement) => placement.key)
+      .filter(isBuildingId),
+  );
+
+  // 移す・取り壊すの画面に出す建物の名前
+  const getKeyLabel = (key: LotKey) => {
+    const lot = map.lots.find((item) => item.key === key);
+
+    return lot
+      ? getLotLabel(
+          lot,
+          characters.find((character) => character.id === lot.characterId),
+        )
+      : "";
+  };
 
   return (
     <section
@@ -594,6 +987,57 @@ export function RepositoryWorld({
           ドラッグで見渡せます．キャラクターや建物を押してみましょう
         </p>
       </div>
+
+      {/* 建築モードの切り替え（右上） */}
+      <div className="absolute right-3 top-3 z-[6000] flex flex-col items-end gap-2 sm:right-5 sm:top-4">
+        {isBuildMode ? (
+          <button
+            type="button"
+            onClick={exitBuildMode}
+            className="rounded-xl bg-slate-950/90 px-3 py-1.5 text-sm font-bold text-white shadow-lg ring-2 ring-amber-300 transition hover:bg-slate-900"
+          >
+            ✕ 建築モードをやめる
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setIsBuildMode(true)}
+            className="rounded-xl bg-amber-300 px-3 py-1.5 text-sm font-bold text-slate-950 shadow-lg transition hover:bg-amber-200"
+          >
+            🔨 建てる
+          </button>
+        )}
+
+        {isBuildMode && (
+          <p className="max-w-64 rounded-lg bg-slate-950/85 px-3 py-1.5 text-right text-xs text-amber-100 shadow">
+            {buildAction?.kind === "move"
+              ? `${getKeyLabel(buildAction.key)}を移す先の区画を押してください`
+              : "光っている区画を押すと建てられます．建物はドラッグで移せます．押すと，移したり取り壊したりもできます"}
+          </p>
+        )}
+
+        {buildAction?.kind === "move" && (
+          <button
+            type="button"
+            onClick={() => setBuildAction(null)}
+            className="rounded-lg bg-slate-950/85 px-2.5 py-1 text-xs font-semibold text-slate-200 hover:bg-slate-900"
+          >
+            移すのをやめる
+          </button>
+        )}
+      </div>
+
+      {/* 建てた・移した・取り壊した時のお知らせ */}
+      {buildMessage && (
+        <div
+          role="status"
+          className="world-announce pointer-events-none absolute inset-x-0 top-20 z-[6000] flex justify-center px-4 sm:top-6"
+        >
+          <p className="rounded-lg border-2 border-amber-300 bg-slate-950/90 px-4 py-1.5 text-center text-sm font-bold text-amber-100 shadow-lg sm:text-base">
+            {buildMessage}
+          </p>
+        </div>
+      )}
 
       {/* 経験値が入ったことのお知らせ */}
       {announcement && (
@@ -620,9 +1064,15 @@ export function RepositoryWorld({
         ref={scrollRef}
         className="world-scroll h-full overflow-auto data-[dragging=true]:cursor-grabbing"
       >
-        <div className="flex min-h-full min-w-full items-center justify-center">
+        {/*
+         * 地図が画面より小さい時だけ真ん中に置く．
+         * justify-center で寄せると，画面より大きい時に左（上）にはみ出した部分へ
+         * スクロールできなくなるので，地図の側の m-auto で寄せる．
+         */}
+        <div className="flex min-h-full min-w-full">
           <div
-            className="world-ground relative shrink-0"
+            ref={groundRef}
+            className="world-ground relative m-auto shrink-0"
             style={{ width: map.width, height: map.height }}
           >
             {/* 道（2本の道と，そのあいだのつなぎの道） */}
@@ -676,10 +1126,43 @@ export function RepositoryWorld({
                   houseIndex={Math.max(ownerIndex, 0)}
                   owner={characters[ownerIndex]}
                   hasPendingRewards={hasPendingRewards}
+                  visitors={lot.key ? visitorsOf(lot.key) : []}
+                  isBuildMode={isBuildMode}
+                  movingKey={
+                    buildAction?.kind === "move" ? buildAction.key : null
+                  }
+                  isDropTarget={
+                    !!dropTarget &&
+                    dropTarget.kind === "empty" &&
+                    dropTarget.row === lot.row &&
+                    dropTarget.offset === lot.offset
+                  }
+                  isDragged={!!dragging && dragging.key === lot.key}
                   onOpen={setOpenBuilding}
+                  onBuildAction={handleBuildAction}
+                  onDragStart={handleDragStart}
                 />
               );
             })}
+
+            {/* ドラッグしている建物の影（指に付いてくる） */}
+            {dragging && draggedLot && (
+              <div
+                className="pointer-events-none absolute -translate-x-1/2 -translate-y-[85%] opacity-80 drop-shadow-[0_12px_12px_rgba(0,0,0,0.5)]"
+                style={{ left: dragging.x, top: dragging.y, zIndex: FRONT_DEPTH }}
+              >
+                <LotArt
+                  lot={draggedLot}
+                  houseIndex={Math.max(
+                    characters.findIndex(
+                      (character) => character.id === draggedLot.characterId,
+                    ),
+                    0,
+                  )}
+                  hasPendingRewards={hasPendingRewards}
+                />
+              </div>
+            )}
 
             {/* キャラクター */}
             {characters.map((character, index) => {
@@ -712,7 +1195,12 @@ export function RepositoryWorld({
                   aria-label={`${character.name}（${repositoryName}・レベル${character.level}）の詳細を見る`}
                   tabIndex={isInside ? -1 : undefined}
                   className={`group absolute z-[var(--depth)] -translate-x-1/2 -translate-y-full cursor-pointer rounded-xl outline-none before:absolute before:-inset-3 before:content-[''] hover:z-[5001] focus-visible:z-[5001] focus-visible:ring-2 focus-visible:ring-emerald-300 ${
-                    isInside ? "pointer-events-none opacity-0" : ""
+                    isInside
+                      ? "pointer-events-none opacity-0"
+                      : isBuildMode
+                        ? // 建築モードでは押せないようにし，少し薄くする
+                          "pointer-events-none opacity-60"
+                        : ""
                   }`}
                   style={
                     {
@@ -839,13 +1327,87 @@ export function RepositoryWorld({
             >
               <HouseInterior
                 character={character}
-                isHome={insideUntil > 0}
+                isHome={walker?.insideOf === "home" && insideUntil > 0}
+                // 遊びに来ているほかのキャラクター
+                guests={visitorsOf(houseLotKey(character.id)).filter(
+                  (visitor) => visitor.id !== character.id,
+                )}
                 // 家に入るたびに，最初にいる場所が変わる
                 seed={Math.floor(insideUntil / 1000)}
               />
             </BuildingDialog>
           );
         })()}
+
+      {openBuilding?.kind === "building" &&
+        builtIds.has(openBuilding.buildingId) && (
+          <BuildingDialog
+            title={`${BUILDING_CATALOG[openBuilding.buildingId].icon} ${BUILDING_CATALOG[openBuilding.buildingId].name}`}
+            onClose={() => setOpenBuilding(null)}
+          >
+            <BuildingInterior
+              buildingId={openBuilding.buildingId}
+              visitors={visitorsOf(openBuilding.buildingId)}
+            />
+          </BuildingDialog>
+        )}
+
+      {/* 建築モードの画面 */}
+      {buildAction?.kind === "build" && (
+        <BuildingDialog
+          title="🔨 ここに建てる"
+          onClose={() => setBuildAction(null)}
+        >
+          <BuildMenu
+            gold={inventory.gold}
+            builtIds={builtIds}
+            onBuild={(buildingId) =>
+              changeLot(
+                {
+                  kind: "place",
+                  placement: {
+                    key: buildingId,
+                    row: buildAction.row,
+                    offset: buildAction.offset,
+                  },
+                },
+                () =>
+                  purchaseBuildingAction(
+                    buildingId,
+                    buildAction.row,
+                    buildAction.offset,
+                  ),
+              )
+            }
+          />
+        </BuildingDialog>
+      )}
+
+      {buildAction?.kind === "manage" && (
+        <BuildingDialog
+          title={getKeyLabel(buildAction.key)}
+          onClose={() => setBuildAction(null)}
+        >
+          <ManageLot
+            lotKey={buildAction.key}
+            onMove={() =>
+              setBuildAction({ kind: "move", key: buildAction.key })
+            }
+            onDemolish={
+              // 取り壊せるのは，建てた建物だけ
+              isBuildingId(buildAction.key)
+                ? () => {
+                    const key = buildAction.key as BuildingId;
+
+                    return changeLot({ kind: "remove", key }, () =>
+                      demolishBuildingAction(key),
+                    );
+                  }
+                : undefined
+            }
+          />
+        </BuildingDialog>
+      )}
     </section>
   );
 }
