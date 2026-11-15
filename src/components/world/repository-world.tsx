@@ -103,7 +103,9 @@ type RepositoryWorldProps = {
 // 建物の場所の変更（押した瞬間に表示を切り替えるために使う）
 type PlacementChange =
   | { kind: "place"; placement: Placement }
-  | { kind: "remove"; key: LotKey };
+  | { kind: "remove"; key: LotKey }
+  // まだ場所を保存していない家・掲示板・雑貨店を，今の場所のまま保存する
+  | { kind: "freeze"; placements: Placement[] };
 
 // 中の様子を開いている建物
 type OpenBuilding =
@@ -526,6 +528,15 @@ export function RepositoryWorld({
     Placement[],
     PlacementChange
   >(placements, (current, change) => {
+    if (change.kind === "freeze") {
+      const saved = new Set(current.map((placement) => placement.key));
+
+      return [
+        ...current,
+        ...change.placements.filter((placement) => !saved.has(placement.key)),
+      ];
+    }
+
     const others = current.filter((placement) =>
       change.kind === "place"
         ? placement.key !== change.placement.key
@@ -775,7 +786,25 @@ export function RepositoryWorld({
     new Promise<BuildingActionResult>((resolve) => {
       setBuildAction(null);
 
+      /*
+       * 場所を保存していない家・掲示板・雑貨店は，空いた区画に自動で並ぶ．
+       * そのままだと，建物を移して空いた場所へ別の家が詰めてきてしまうので，
+       * 変える前に今の並びを保存しておく（サーバーでも同じように保存する）．
+       */
+      const saved = new Set(shownPlacements.map((placement) => placement.key));
+      const autoPlaced = map.lots.flatMap((lot) =>
+        lot.key &&
+        !isBuildingId(lot.key) &&
+        !saved.has(lot.key)
+          ? [{ key: lot.key, row: lot.row, offset: lot.offset }]
+          : [],
+      );
+
       startPlacementTransition(async () => {
+        if (autoPlaced.length > 0) {
+          changePlacement({ kind: "freeze", placements: autoPlaced });
+        }
+
         changePlacement(change);
         const result = await action();
 
@@ -1035,10 +1064,15 @@ export function RepositoryWorld({
         ref={scrollRef}
         className="world-scroll h-full overflow-auto data-[dragging=true]:cursor-grabbing"
       >
-        <div className="flex min-h-full min-w-full items-center justify-center">
+        {/*
+         * 地図が画面より小さい時だけ真ん中に置く．
+         * justify-center で寄せると，画面より大きい時に左（上）にはみ出した部分へ
+         * スクロールできなくなるので，地図の側の m-auto で寄せる．
+         */}
+        <div className="flex min-h-full min-w-full">
           <div
             ref={groundRef}
-            className="world-ground relative shrink-0"
+            className="world-ground relative m-auto shrink-0"
             style={{ width: map.width, height: map.height }}
           >
             {/* 道（2本の道と，そのあいだのつなぎの道） */}
