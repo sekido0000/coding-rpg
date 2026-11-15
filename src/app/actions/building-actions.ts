@@ -2,11 +2,14 @@
 
 import { refresh, revalidatePath } from "next/cache";
 
-import { getBuildings } from "@/data/buildings";
+import { getPlacements } from "@/data/buildings";
 import { getCharacters } from "@/data/characters";
 import {
   BUILDING_CATALOG,
   getDemolishRefund,
+  houseLotKey,
+  isLotKey,
+  type LotKey,
   isBuildingId,
 } from "@/lib/buildings/catalog";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -45,14 +48,14 @@ async function canBuildAt(row: number, offset: number) {
     return false;
   }
 
-  const [characters, buildings] = await Promise.all([
+  const [characters, placements] = await Promise.all([
     getCharacters(),
-    getBuildings(),
+    getPlacements(),
   ]);
 
   const map = buildWorldMap(
     characters.map((character) => character.id),
-    buildings,
+    placements,
   );
 
   return isBuildableLot(map, row, offset);
@@ -115,35 +118,78 @@ export async function purchaseBuildingAction(
   return done(`${building.name}を建てました！`);
 }
 
-// 建てた建物を，空いた区画へ移す（無料）
+/*
+ * 建物（家・掲示板・雑貨店・建てた建物）を，空いた区画へ移す（無料）．
+ * 建てた建物は move_building，家・掲示板・雑貨店は place_lot で場所を保存する．
+ */
 export async function moveBuildingAction(
-  buildingId: string,
+  key: string,
   row: number,
   offset: number,
 ): Promise<BuildingActionResult> {
-  if (!isBuildingId(buildingId)) {
+  if (!isLotKey(key)) {
     return { ok: false, message: "建物が見つかりません" };
   }
 
   const userId = await getUserId();
+  const characters = await getCharacters();
+
+  // 家は，自分のキャラクターの家だけを移せる
+  if (
+    key.startsWith("house:") &&
+    !characters.some((character) => houseLotKey(character.id) === key)
+  ) {
+    return { ok: false, message: "建物が見つかりません" };
+  }
 
   if (!(await canBuildAt(row, offset))) {
     return { ok: false, message: "ここには移せません" };
   }
 
-  const { data, error } = await createAdminClient().rpc("move_building", {
-    p_user_id: userId,
-    p_building_id: buildingId,
-    p_row: row,
-    p_offset: offset,
-  });
+  const { data, error } = isBuildingId(key)
+    ? await createAdminClient().rpc("move_building", {
+        p_user_id: userId,
+        p_building_id: key,
+        p_row: row,
+        p_offset: offset,
+      })
+    : await createAdminClient().rpc("place_lot", {
+        p_user_id: userId,
+        p_key: key,
+        p_row: row,
+        p_offset: offset,
+      });
 
   if (error || data !== "ok") {
     console.error("Failed to move building:", error ?? data);
     return { ok: false, message: "移せませんでした" };
   }
 
-  return done(`${BUILDING_CATALOG[buildingId].name}を移しました`);
+  return done(`${getLotName(key, characters)}を移しました`);
+}
+
+// 建物の名前（お知らせに使う）
+function getLotName(
+  key: LotKey,
+  characters: { id: string; name: string }[],
+) {
+  if (key === "quest_board") {
+    return "クエスト掲示板";
+  }
+
+  if (key === "general_store") {
+    return "雑貨店";
+  }
+
+  if (isBuildingId(key)) {
+    return BUILDING_CATALOG[key].name;
+  }
+
+  const owner = characters.find(
+    (character) => houseLotKey(character.id) === key,
+  );
+
+  return owner ? `${owner.name}の家` : "家";
 }
 
 // 建てた建物を取り壊し，値段の半分のゴールドを返す

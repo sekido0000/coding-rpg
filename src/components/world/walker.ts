@@ -6,7 +6,7 @@
  * 噴水のような外の建物では，そばでひと休みする．
  */
 
-import type { BuildingId } from "@/lib/buildings/catalog";
+import type { BuildingId, HouseLotKey } from "@/lib/buildings/catalog";
 import {
   pickRoadTarget,
   planRoute,
@@ -18,8 +18,8 @@ import {
   type Position,
 } from "@/lib/world/movement";
 
-// 立ち寄る先．home は自分の家
-export type Visit = "home" | BuildingId;
+// 立ち寄る先．home は自分の家，house:〜 はほかのキャラクターの家
+export type Visit = "home" | BuildingId | HouseLotKey;
 
 export type Walker = {
   position: Position;
@@ -54,12 +54,17 @@ export type WalkerContext = {
   homeDoor: Position;
   // 建てた建物
   buildings: Map<BuildingId, VisitTarget>;
+  // ほかのキャラクターの家の扉（遊びに行く先）
+  friendHouses: Map<HouseLotKey, Position>;
   now: number;
   random: () => number;
 };
 
 // 次の行き先を選ぶ時に，自分の家に帰る確率
 const GO_HOME_CHANCE = 0.2;
+
+// 次の行き先を選ぶ時に，ほかのキャラクターの家へ遊びに行く確率（ほかのキャラクターがいる時）
+const VISIT_FRIEND_CHANCE = 0.1;
 
 // 次の行き先を選ぶ時に，建てた建物に立ち寄る確率（建物がある時）
 const VISIT_BUILDING_CHANCE = 0.3;
@@ -133,9 +138,17 @@ function getVisitTarget(
   visit: Visit,
   context: WalkerContext,
 ): VisitTarget | null {
-  return visit === "home"
-    ? { door: context.homeDoor, isIndoor: true }
-    : (context.buildings.get(visit) ?? null);
+  if (visit === "home") {
+    return { door: context.homeDoor, isIndoor: true };
+  }
+
+  if (visit.startsWith("house:")) {
+    const door = context.friendHouses.get(visit as HouseLotKey);
+
+    return door ? { door, isIndoor: true } : null;
+  }
+
+  return context.buildings.get(visit as BuildingId) ?? null;
 }
 
 /*
@@ -183,12 +196,12 @@ export function stepWalker(
     if (isSamePosition(walker.position, target.door)) {
       const visit = walker.goingTo;
 
-      // 外の建物では，中に入らずにそばで休む
-      if (!target.isIndoor && visit !== "home") {
+      // 外の建物では，中に入らずにそばで休む（家は必ず中に入る）
+      if (!target.isIndoor && visit !== "home" && !visit.startsWith("house:")) {
         return {
           ...walker,
           goingTo: null,
-          restingAt: visit,
+          restingAt: visit as BuildingId,
           nextMoveAt: now + between(REST_TIME, random),
         };
       }
@@ -215,18 +228,26 @@ export function stepWalker(
     );
   }
 
-  // 次の行き先を選ぶ
+  // 次の行き先を選ぶ（家に帰る・友だちの家へ遊びに行く・建物に立ち寄る・歩き回る）
   const roll = random();
   const buildingIds = [...context.buildings.keys()];
+  const friendKeys = [...context.friendHouses.keys()];
+  const pick = <T,>(items: T[]) =>
+    items[Math.floor(random() * items.length)];
   let goingTo: Visit | null = null;
 
   if (roll < GO_HOME_CHANCE) {
     goingTo = "home";
   } else if (
-    buildingIds.length > 0 &&
-    roll < GO_HOME_CHANCE + VISIT_BUILDING_CHANCE
+    friendKeys.length > 0 &&
+    roll < GO_HOME_CHANCE + VISIT_FRIEND_CHANCE
   ) {
-    goingTo = buildingIds[Math.floor(random() * buildingIds.length)];
+    goingTo = pick(friendKeys);
+  } else if (
+    buildingIds.length > 0 &&
+    roll < GO_HOME_CHANCE + VISIT_FRIEND_CHANCE + VISIT_BUILDING_CHANCE
+  ) {
+    goingTo = pick(buildingIds);
   }
 
   const destination = goingTo

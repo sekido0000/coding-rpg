@@ -8,6 +8,8 @@ import {
   BUILDING_CATALOG,
   BUILDING_IDS,
   getDemolishRefund,
+  isBuildingId,
+  type LotKey,
   type BuildingId,
 } from "@/lib/buildings/catalog";
 
@@ -110,33 +112,39 @@ export function BuildMenu({ gold, builtIds, onBuild }: BuildMenuProps) {
   );
 }
 
-type ManageBuildingProps = {
-  buildingId: BuildingId;
+type ManageLotProps = {
+  lotKey: LotKey;
   onMove: () => void;
-  onDemolish: () => Promise<BuildingActionResult>;
+  // 取り壊せる建物（建てた建物）の時だけ渡す
+  onDemolish?: () => Promise<BuildingActionResult>;
 };
 
 /*
- * 建てた建物を，移すか取り壊すかを選ぶ．
- * 取り壊す時は，戻ってくるゴールドを見せて確認してから行う．
+ * 建物を移すか，取り壊すかを選ぶ．
+ * 家・掲示板・雑貨店は移すだけ．建てた建物は取り壊すこともでき，
+ * その時は戻ってくるゴールドを見せて確認してから行う．
  */
-export function ManageBuilding({
-  buildingId,
-  onMove,
-  onDemolish,
-}: ManageBuildingProps) {
-  const building = BUILDING_CATALOG[buildingId];
-  const refund = getDemolishRefund(buildingId);
+export function ManageLot({ lotKey, onMove, onDemolish }: ManageLotProps) {
+  const buildingId = isBuildingId(lotKey) ? lotKey : null;
+  const refund = buildingId ? getDemolishRefund(buildingId) : 0;
   const [isConfirming, setIsConfirming] = useState(false);
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
   return (
-    <div className="grid gap-4 sm:grid-cols-[200px_1fr]">
-      <BuildingPreview buildingId={buildingId} />
+    <div
+      className={
+        buildingId ? "grid gap-4 sm:grid-cols-[200px_1fr]" : "space-y-3"
+      }
+    >
+      {buildingId && <BuildingPreview buildingId={buildingId} />}
 
       <div className="space-y-3">
-        <p className="text-sm text-slate-300">{building.description}</p>
+        <p className="text-sm text-slate-300">
+          {buildingId
+            ? BUILDING_CATALOG[buildingId].description
+            : "空いている区画へ移せます．ドラッグして移すこともできます．"}
+        </p>
 
         {error && (
           <p role="alert" className="text-sm font-semibold text-red-300">
@@ -144,10 +152,10 @@ export function ManageBuilding({
           </p>
         )}
 
-        {isConfirming ? (
+        {isConfirming && buildingId && onDemolish ? (
           <div className="space-y-3 rounded-xl border border-red-400/40 bg-red-500/10 p-3">
             <p className="text-sm font-bold text-red-100">
-              本当に{building.name}を取り壊しますか？
+              本当に{BUILDING_CATALOG[buildingId].name}を取り壊しますか？
             </p>
             <p className="text-xs text-red-100/80">
               建てた時の半分の {refund} G が戻ります．
@@ -188,13 +196,15 @@ export function ManageBuilding({
             >
               ↔ 移す（無料）
             </button>
-            <button
-              type="button"
-              onClick={() => setIsConfirming(true)}
-              className="rounded-xl border border-red-400/50 px-4 py-2 text-sm font-semibold text-red-200 transition hover:bg-red-500/10"
-            >
-              取り壊す（{refund} G 戻る）
-            </button>
+            {onDemolish && (
+              <button
+                type="button"
+                onClick={() => setIsConfirming(true)}
+                className="rounded-xl border border-red-400/50 px-4 py-2 text-sm font-semibold text-red-200 transition hover:bg-red-500/10"
+              >
+                取り壊す（{refund} G 戻る）
+              </button>
+            )}
           </div>
         )}
       </div>

@@ -9,11 +9,12 @@ import {
 import { buildWorldMap } from "@/lib/world/map";
 
 const map = buildWorldMap(["a", "b"], [
-  { buildingId: "cafe", row: 1, offset: 1 },
-  { buildingId: "fountain", row: 1, offset: 2 },
+  { key: "cafe", row: 1, offset: 1 },
+  { key: "fountain", row: 1, offset: 2 },
 ]);
 
 const homeDoor = map.lots.find((lot) => lot.characterId === "a")!.door;
+const friendDoor = map.lots.find((lot) => lot.characterId === "b")!.door;
 const cafeDoor = map.lots.find((lot) => lot.buildingId === "cafe")!.door;
 const fountainDoor = map.lots.find(
   (lot) => lot.buildingId === "fountain",
@@ -30,6 +31,7 @@ function context(
       ["cafe", { door: cafeDoor, isIndoor: true }],
       ["fountain", { door: fountainDoor, isIndoor: false }],
     ]),
+    friendHouses: new Map([["house:b", friendDoor]]),
     now,
     random,
   };
@@ -110,5 +112,18 @@ describe("キャラクターの動き", () => {
     };
 
     expect(stepWalker(walker, context(0)).goingTo).toBeNull();
+  });
+});
+
+describe("友だちの家へ遊びに行く", () => {
+  it("ほかのキャラクターの家に遊びに行くと，その家の中に入る", () => {
+    const walker: Walker = {
+      ...getInitialWalker(homeDoor),
+      goingTo: "house:b",
+    };
+    const { walker: arrived } = walkUntilArrived(walker, 0);
+
+    expect(arrived.insideOf).toBe("house:b");
+    expect(arrived.position).toEqual(friendDoor);
   });
 });
