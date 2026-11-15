@@ -46,17 +46,31 @@ function XpBreakdown({
       ? `2行目以降に変更の理由を書くと +${BODY_BONUS_XP} XP`
       : null;
 
+  /*
+   * ふだんは閉じておき，押した時だけ内訳とヒントを出す．
+   * details を使うので，キーボードでも開け閉めできる．
+   */
   return (
-    <div className="mt-1 space-y-1 text-xs">
-      <p className="text-slate-400">
-        内訳：{parts.join(" ＋ ")}
-        {event.is_vague && "（メッセージがあいまいなので半分）"}
-      </p>
+    <details className="group mt-1 text-xs">
+      <summary className="inline-flex cursor-pointer list-none items-center gap-1 rounded-full px-1.5 py-0.5 text-slate-500 transition hover:bg-white/5 hover:text-slate-300 [&::-webkit-details-marker]:hidden">
+        💡 内訳
+        {hint && "とヒント"}
+        <span className="transition group-open:rotate-90">
+          ›
+        </span>
+      </summary>
 
-      {hint && (
-        <p className="text-amber-200/80">💡 {hint}</p>
-      )}
-    </div>
+      <div className="mt-1 space-y-1 pl-1.5">
+        <p className="text-slate-400">
+          {parts.join(" ＋ ")}
+          {event.is_vague && "（メッセージがあいまいなので半分）"}
+        </p>
+
+        {hint && (
+          <p className="text-amber-200/80">{hint}</p>
+        )}
+      </div>
+    </details>
   );
 }
 
