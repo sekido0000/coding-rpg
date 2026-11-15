@@ -9,6 +9,7 @@ import {
   isItemId,
   isItemSlot,
 } from "@/lib/items/catalog";
+import { grantTitles } from "@/lib/titles/grant-titles";
 
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -68,6 +69,13 @@ export async function purchaseItemAction(
 
   if (remainingGold === null) {
     return { status: "error", message: "ゴールドが足りません" };
+  }
+
+  // お店の称号を渡す．失敗しても，買った装備はそのまま
+  try {
+    await grantTitles(createAdminClient(), userId);
+  } catch (titleError) {
+    console.error("Failed to grant titles:", titleError);
   }
 
   revalidatePath("/shop");

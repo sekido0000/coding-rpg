@@ -8,6 +8,7 @@ import {
 import { addXp } from "@/lib/growth/level";
 import { grantQuestRewards } from "@/lib/quests/grant-rewards";
 import { getWeekStart } from "@/lib/quests/weekly";
+import { grantTitles } from "@/lib/titles/grant-titles";
 import {
   getCharacterEvolution,
   isCharacterType,
@@ -476,5 +477,12 @@ export async function updateCharacter(
     } catch (error) {
       console.error("Failed to grant quest rewards:", error);
     }
+  }
+
+  // 称号を渡す（クエストの報酬と同じく，失敗しても例外は投げない）
+  try {
+    await grantTitles(supabase, repository.user_id);
+  } catch (error) {
+    console.error("Failed to grant titles:", error);
   }
 }

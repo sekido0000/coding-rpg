@@ -202,3 +202,36 @@ export function getQuestRewards(
     })),
   );
 }
+
+// 1週間前の週の月曜日
+function getPreviousWeekStart(weekStart: string) {
+  return new Date(Date.parse(`${weekStart}T00:00:00Z`) - 7 * DAY)
+    .toISOString()
+    .slice(0, 10);
+}
+
+/*
+ * 毎回クエストを何週続けて達成しているか．
+ *
+ * 今週を達成していれば今週から，まだ達成していなければ先週から数える
+ * （今週の途中で連続が切れて見えないようにするため）．
+ * 1週でも抜けたら，そこで止める．
+ */
+export function getEveryTimeStreak(
+  completedWeekStarts: string[],
+  currentWeekStart: string,
+) {
+  const completed = new Set(completedWeekStarts);
+
+  let week = completed.has(currentWeekStart)
+    ? currentWeekStart
+    : getPreviousWeekStart(currentWeekStart);
+  let streak = 0;
+
+  while (completed.has(week)) {
+    streak += 1;
+    week = getPreviousWeekStart(week);
+  }
+
+  return streak;
+}

@@ -639,3 +639,38 @@ describe("週のクエスト", () => {
     ]);
   });
 });
+
+describe("称号", () => {
+  it("pushで数が届いた称号を渡し，もらった日時は書き換えない", async () => {
+    await POST(webhookRequest(pushPayload()));
+
+    // 1回目のpush：コミット1回・キャラ1体・クエスト★2つ
+    const titleIds = () =>
+      db.rows("user_titles").map((row) => row.title_id);
+
+    expect(titleIds()).toEqual([
+      "quest_stars_1",
+      "characters_1",
+      "commits_1",
+    ]);
+
+    const firstRow = db.rows("user_titles")[0];
+    firstRow.earned_at = "2026-11-01T00:00:00Z";
+
+    await POST(
+      webhookRequest(pushPayload(), {
+        deliveryId: "delivery-2",
+      }),
+    );
+
+    // 同じ称号は増えず，もらった日時もそのまま
+    expect(titleIds()).toEqual([
+      "quest_stars_1",
+      "characters_1",
+      "commits_1",
+    ]);
+    expect(db.rows("user_titles")[0].earned_at).toBe(
+      "2026-11-01T00:00:00Z",
+    );
+  });
+});
