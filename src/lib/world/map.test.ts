@@ -283,3 +283,30 @@ describe("位置から区画を探す", () => {
     expect(findLotAt(map, map.lots[0].x, map.height + 100)).toBeNull();
   });
 });
+
+describe("ダンジョンの入口", () => {
+  it("ダンジョンの入口が1つあり，家の場所は入口がない時と変わらない", () => {
+    const map = buildWorldMap(ids(4));
+    const gates = map.lots.filter((lot) => lot.kind === "dungeon_gate");
+
+    expect(gates).toHaveLength(1);
+
+    // 入口は，家が並んだ次の空いた区画に置かれるので，家はすべて入口より真ん中に近い
+    const distance = (lot: { row: number; offset: number }) =>
+      Math.abs(lot.offset - 0.5) + lot.row * 0.5;
+    const houses = map.lots.filter((lot) => lot.kind === "house");
+
+    for (const house of houses) {
+      expect(distance(house)).toBeLessThanOrEqual(distance(gates[0]));
+    }
+  });
+
+  it("移したダンジョンの入口は，その場所に置かれる", () => {
+    const map = buildWorldMap(ids(2), [
+      { key: "dungeon_gate", row: 1, offset: -3 },
+    ]);
+    const gate = map.lots.find((lot) => lot.kind === "dungeon_gate");
+
+    expect(gate).toMatchObject({ row: 1, offset: -3, key: "dungeon_gate" });
+  });
+});

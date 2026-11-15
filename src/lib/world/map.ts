@@ -11,6 +11,7 @@
 import {
   houseLotKey,
   isBuildingId,
+  isFixedLotKey,
   type BuildingId,
   type LotKey,
   type Placement,
@@ -51,6 +52,7 @@ export type LotKind =
   | "house"
   | "quest_board"
   | "general_store"
+  | "dungeon_gate"
   | "building"
   | "empty";
 
@@ -71,7 +73,7 @@ export type Lot = {
   door: Position;
   // 真ん中（掲示板）の区画から何区画ずれているか（建物の場所として保存する値）
   offset: number;
-  // 移せる建物（家・掲示板・雑貨店・建てた建物）の時は，場所を保存する時の名前
+  // 移せる建物（家・掲示板・雑貨店・ダンジョンの入口・建てた建物）の時は，場所を保存する時の名前
   key?: LotKey;
   // 家の時は，住んでいるキャラクター
   characterId?: string;
@@ -105,7 +107,8 @@ export type WorldMap = {
  *
  * 場所を保存した建物（建てた建物や，移した家・掲示板・雑貨店）は，その場所に置く．
  * 掲示板と雑貨店は，移していなければ奥の列の真ん中に置く．
- * 移していない家は，残りの区画に真ん中から近い順に並べる．空いた区画には飾りを置く．
+ * 移していない家は，残りの区画に真ん中から近い順に並べ，その次にダンジョンの入口を置く．
+ * 空いた区画には飾りを置く．
  */
 export function buildWorldMap(
   characterIds: string[],
@@ -114,7 +117,8 @@ export function buildWorldMap(
   const purchasedCount = placements.filter((placement) =>
     isBuildingId(placement.key),
   ).length;
-  const lotCount = characterIds.length + 2 + purchasedCount;
+  // 家・建てた建物と，掲示板・雑貨店・ダンジョンの入口
+  const lotCount = characterIds.length + 3 + purchasedCount;
   // 掲示板と雑貨店がちょうど真ん中に来るよう，列の数は偶数にする
   const needed = Math.ceil(lotCount / 2);
   // 場所を保存した建物が端にあっても収まる広さにする
@@ -156,7 +160,7 @@ export function buildWorldMap(
   // 保存した場所の名前から，区画に置くものを決める．置かないもの（消えたキャラクターの家など）は null
   const characterSet = new Set(characterIds);
   const toContent = (key: LotKey): LotContent | null => {
-    if (key === "quest_board" || key === "general_store") {
+    if (isFixedLotKey(key)) {
       return { kind: key, key };
     }
 
@@ -217,6 +221,14 @@ export function buildWorldMap(
     if (!placedKeys.has(key)) {
       waiting.push({ kind: "house", key, characterId });
     }
+  }
+
+  /*
+   * 移していないダンジョンの入口は，家の後に（家が並んだ次の空いた区画に）置く．
+   * あとから増えた建物なので，先に並んでいた家の場所が変わらないようにする．
+   */
+  if (!placedKeys.has("dungeon_gate")) {
+    waiting.push({ kind: "dungeon_gate", key: "dungeon_gate" });
   }
 
   const lots: Lot[] = [];
