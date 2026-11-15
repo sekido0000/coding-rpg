@@ -1,0 +1,117 @@
+/*
+ * ワールドに建てられる建物の一覧．
+ *
+ * 1週間のクエストの報酬は最大 210 G なので，
+ * 安いものは1週間，高いものは3〜4週間ためると建てられる値段にする．
+ * 建物は見た目とキャラクターの動きだけを変え，経験値やゴールドは増やさない．
+ * 建物を増やす時はここに足し，絵（buildings.tsx・interiors.tsx）を用意する．
+ */
+
+export const BUILDING_IDS = [
+  "ramen_stall",
+  "fountain",
+  "cafe",
+  "library",
+  "arcade",
+  "restaurant",
+  "lab",
+] as const;
+
+export type BuildingId = (typeof BUILDING_IDS)[number];
+
+export type BuildingDefinition = {
+  id: BuildingId;
+  name: string;
+  icon: string;
+  description: string;
+  price: number;
+  /*
+   * 立ち寄ったキャラクターが中に入るか．
+   * 噴水のような外の広場では，中に入らずにそばでひと休みする．
+   */
+  isIndoor: boolean;
+};
+
+export const BUILDING_CATALOG: Record<BuildingId, BuildingDefinition> = {
+  ramen_stall: {
+    id: "ramen_stall",
+    name: "ラーメン屋台",
+    icon: "🍜",
+    description: "カウンターで湯気の立つラーメンを食べる．",
+    price: 150,
+    isIndoor: true,
+  },
+  fountain: {
+    id: "fountain",
+    name: "公園の噴水",
+    icon: "⛲",
+    description: "噴水のそばでひと休みする．",
+    price: 250,
+    isIndoor: false,
+  },
+  cafe: {
+    id: "cafe",
+    name: "カフェ",
+    icon: "☕",
+    description: "コーヒーを飲みながら，おしゃべりする．",
+    price: 300,
+    isIndoor: true,
+  },
+  library: {
+    id: "library",
+    name: "図書館",
+    icon: "📚",
+    description: "机で本を読んだり，本棚を見て回ったりする．",
+    price: 400,
+    isIndoor: true,
+  },
+  arcade: {
+    id: "arcade",
+    name: "ゲームセンター",
+    icon: "🕹️",
+    description: "光るゲーム機で遊ぶ．",
+    price: 500,
+    isIndoor: true,
+  },
+  restaurant: {
+    id: "restaurant",
+    name: "レストラン",
+    icon: "🍽️",
+    description: "テーブルでごちそうを食べる．",
+    price: 600,
+    isIndoor: true,
+  },
+  lab: {
+    id: "lab",
+    name: "研究所",
+    icon: "🧪",
+    description: "実験をする．ときどき煙がぽんと出る．",
+    price: 700,
+    isIndoor: true,
+  },
+};
+
+// 取り壊した時に返すゴールドの割合
+export const DEMOLISH_REFUND_RATE = 0.5;
+
+export function getDemolishRefund(buildingId: BuildingId) {
+  return Math.floor(
+    BUILDING_CATALOG[buildingId].price * DEMOLISH_REFUND_RATE,
+  );
+}
+
+export function isBuildingId(value: unknown): value is BuildingId {
+  return (
+    typeof value === "string" &&
+    (BUILDING_IDS as readonly string[]).includes(value)
+  );
+}
+
+// 建てた建物と，その場所
+export type PlacedBuilding = {
+  buildingId: BuildingId;
+  // 何列目か（0：奥，1：手前）
+  row: 0 | 1;
+  // 真ん中（掲示板）の区画から何区画ずれているか．ワールドが広がっても場所が変わらないようにする
+  offset: number;
+};

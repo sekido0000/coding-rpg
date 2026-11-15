@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   buildWorldMap,
+  isBuildableLot,
   pickRoadTarget,
   planRoute,
 } from "@/lib/world/map";
@@ -159,5 +160,62 @@ describe("キャラクターが歩く範囲", () => {
     expect(large.walkMaxX - large.walkMinX).toBeGreaterThan(
       small.walkMaxX - small.walkMinX,
     );
+  });
+});
+
+describe("建てた建物", () => {
+  it("建てた建物は，その場所に置かれ，家はほかの区画に建つ", () => {
+    const map = buildWorldMap(ids(3), [
+      { buildingId: "cafe", row: 1, offset: 0 },
+    ]);
+    const cafe = map.lots.find((lot) => lot.buildingId === "cafe")!;
+
+    expect(cafe.kind).toBe("building");
+    expect(cafe.row).toBe(1);
+    expect(cafe.offset).toBe(0);
+    expect(map.lots.filter((lot) => lot.kind === "house")).toHaveLength(3);
+  });
+
+  it("キャラクターが増えて世界が広がっても，建物の場所は掲示板から見て同じ", () => {
+    const building = { buildingId: "library" as const, row: 0 as const, offset: 3 };
+    const small = buildWorldMap(ids(2), [building]);
+    const large = buildWorldMap(ids(40), [building]);
+
+    const boardX = (map: typeof small) =>
+      map.lots.find((lot) => lot.kind === "quest_board")!.x;
+    const libraryX = (map: typeof small) =>
+      map.lots.find((lot) => lot.buildingId === "library")!.x;
+
+    expect(libraryX(small) - boardX(small)).toBe(
+      libraryX(large) - boardX(large),
+    );
+  });
+
+  it("掲示板や雑貨店の場所には，建物を置かない", () => {
+    const map = buildWorldMap(ids(1), [
+      { buildingId: "cafe", row: 0, offset: 0 },
+    ]);
+
+    expect(map.lots.find((lot) => lot.buildingId === "cafe")).toBeUndefined();
+    expect(map.lots.filter((lot) => lot.kind === "quest_board")).toHaveLength(1);
+  });
+
+  it("端の建物も収まるように，世界が広がる", () => {
+    const map = buildWorldMap(ids(1), [
+      { buildingId: "lab", row: 1, offset: 12 },
+    ]);
+
+    expect(map.lots.find((lot) => lot.buildingId === "lab")).toBeDefined();
+  });
+
+  it("空いた区画にだけ建てられる", () => {
+    const map = buildWorldMap(ids(1));
+    const empty = map.lots.find((lot) => lot.kind === "empty")!;
+
+    expect(isBuildableLot(map, empty.row, empty.offset)).toBe(true);
+    // 掲示板の場所
+    expect(isBuildableLot(map, 0, 0)).toBe(false);
+    // 地図の外
+    expect(isBuildableLot(map, 0, 99)).toBe(false);
   });
 });

@@ -18,9 +18,14 @@ import type { Character } from "@/types/character";
  * 家具の位置と大きさは部屋に対する割合（%）なので，画面の幅に合わせて伸び縮みする．
  */
 
-type Rect = [number, number, number, number, string];
+export type Rect = [number, number, number, number, string];
 
-function Pixels({
+/*
+ * 四角の並びで描くドット絵．
+ * 机の上のカップのように，y がマイナス（上にはみ出す）の四角があれば，
+ * その分だけ絵を上に広げる（足元の位置は変わらない）．
+ */
+export function Pixels({
   width,
   height,
   rects,
@@ -29,9 +34,11 @@ function Pixels({
   height: number;
   rects: Rect[];
 }) {
+  const top = Math.min(0, ...rects.map(([, y]) => y));
+
   return (
     <svg
-      viewBox={`0 0 ${width} ${height}`}
+      viewBox={`0 ${top} ${width} ${height - top}`}
       shapeRendering="crispEdges"
       aria-hidden="true"
       className="block h-auto w-full"
@@ -44,7 +51,7 @@ function Pixels({
 }
 
 // 部屋の中に家具を置く（left・bottom・width は部屋に対する%）
-function Placed({
+export function Placed({
   left,
   bottom,
   width,
@@ -68,7 +75,7 @@ function Placed({
 }
 
 // 部屋の壁と床．wall と floor は CSS の背景．aspect は部屋の縦横の比
-function Room({
+export function Room({
   wall,
   floor,
   aspect = "aspect-[16/9]",
@@ -94,7 +101,7 @@ function Room({
 
 /* ---------- 家具 ---------- */
 
-const WINDOW: Rect[] = [
+export const WINDOW: Rect[] = [
   [0, 0, 14, 10, "#5b3a1e"],
   [1, 1, 12, 8, "#7dd3fc"],
   [1, 1, 12, 3, "#bae6fd"],
@@ -126,7 +133,7 @@ const DESK: Rect[] = [
   [17, 14, 2, 6, "#7c4a1e"],
 ];
 
-const BOOKSHELF: Rect[] = [
+export const BOOKSHELF: Rect[] = [
   [0, 0, 14, 20, "#7c4a1e"],
   [1, 1, 12, 5, "#451a03"],
   [1, 7, 12, 5, "#451a03"],
@@ -142,7 +149,7 @@ const BOOKSHELF: Rect[] = [
   [8, 14, 3, 5, "#84cc16"],
 ];
 
-const PLANT: Rect[] = [
+export const PLANT: Rect[] = [
   [3, 0, 2, 3, "#22c55e"],
   [0, 2, 4, 3, "#16a34a"],
   [4, 1, 4, 4, "#15803d"],
