@@ -4,6 +4,7 @@ import { useRealtimeCharacters } from "@/components/characters/use-realtime-char
 import { PendingLink } from "@/components/ui/pending-link";
 import { RepositoryWorld } from "@/components/world/repository-world";
 import type { Inventory } from "@/data/inventory";
+import type { PlacedBuilding } from "@/lib/buildings/catalog";
 import type { ActivitySummary } from "@/lib/world/activity";
 import type { Character } from "@/types/character";
 
@@ -14,6 +15,8 @@ type WorldHomeProps = {
   hasPendingRewards: boolean;
   // 持っているゴールドと装備（雑貨店の中で買い物をする時に使う）
   inventory: Inventory;
+  // 建てた建物と，その場所
+  buildings: PlacedBuilding[];
 };
 
 /*
@@ -25,6 +28,7 @@ export function WorldHome({
   worldActivity,
   hasPendingRewards,
   inventory,
+  buildings,
 }: WorldHomeProps) {
   const characters = useRealtimeCharacters(initialCharacters);
 
@@ -64,6 +68,7 @@ export function WorldHome({
       activity={worldActivity}
       hasPendingRewards={hasPendingRewards}
       inventory={inventory}
+      buildings={buildings}
     />
   );
 }
