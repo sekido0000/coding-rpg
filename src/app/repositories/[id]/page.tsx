@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { CharacterDetail } from "@/components/repositories/character-detail";
 import { getCharacterByRepositoryId } from "@/data/characters";
 import { getGrowthEvents } from "@/lib/growth/events";
+import { getInventory } from "@/data/inventory";
 
 export default async function RepositoryPage({
   params,
@@ -13,14 +14,16 @@ export default async function RepositoryPage({
     notFound();
   }
 
-  const growthEvents = await getGrowthEvents(
-    character.id,
-  );
+  const [growthEvents, inventory] = await Promise.all([
+    getGrowthEvents(character.id),
+    getInventory(),
+  ]);
 
   return (
     <CharacterDetail
       character={character}
       growthEvents={growthEvents}
+      inventory={inventory}
     />
   );
 }

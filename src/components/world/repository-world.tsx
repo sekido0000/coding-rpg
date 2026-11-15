@@ -17,6 +17,7 @@ import {
   type Speech,
 } from "@/components/world/use-speeches";
 import { VillageScenery } from "@/components/world/village-scenery";
+import { EquipmentLayers } from "@/components/items/equipment-layers";
 import { getCharacterEvolution } from "@/lib/characters/catalog";
 import {
   getDepth,
@@ -395,21 +396,30 @@ export function RepositoryWorld({
                 </span>
               )}
 
-              <Image
-                // 経験値が入るたびに跳ねる動きをやり直すため，キーを変える
-                key={reaction ? `hop-${reaction.key}` : "idle"}
-                src={evolution.imagePath}
-                alt=""
-                width={96}
-                height={96}
-                className={`repo-pixel-image relative block h-auto drop-shadow-[0_10px_8px_rgba(0,0,0,0.45)] ${
-                  isCrowded
-                    ? "w-14 sm:w-16"
-                    : "w-20 sm:w-24"
-                } ${walker.isFacingLeft ? "-scale-x-100" : ""} ${
-                  reaction ? "world-hop" : ""
-                }`}
-              />
+              {/* おともは，歩く向きの後ろからついていく */}
+              <EquipmentLayers
+                companionItem={character.companionItem}
+                auraItem={character.auraItem}
+                companionSide={
+                  walker.isFacingLeft ? "right" : "left"
+                }
+              >
+                <Image
+                  // 経験値が入るたびに跳ねる動きをやり直すため，キーを変える
+                  key={reaction ? `hop-${reaction.key}` : "idle"}
+                  src={evolution.imagePath}
+                  alt=""
+                  width={96}
+                  height={96}
+                  className={`repo-pixel-image relative block h-auto drop-shadow-[0_10px_8px_rgba(0,0,0,0.45)] ${
+                    isCrowded
+                      ? "w-14 sm:w-16"
+                      : "w-20 sm:w-24"
+                  } ${walker.isFacingLeft ? "-scale-x-100" : ""} ${
+                    reaction ? "world-hop" : ""
+                  }`}
+                />
+              </EquipmentLayers>
             </span>
 
             <span className="mx-auto -mt-1 block h-2 w-3/5 rounded-full bg-black/40 blur-[2px]" />

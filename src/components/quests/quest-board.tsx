@@ -1,3 +1,4 @@
+import { PendingLink } from "@/components/ui/pending-link";
 import type {
   QuestBoardItem,
   WeeklyQuestBoard,
@@ -179,9 +180,18 @@ export function QuestBoard({ board }: QuestBoardProps) {
           </p>
         </div>
 
-        <p className="rounded-full border border-amber-300/40 bg-amber-300/10 px-3 py-1 text-sm font-bold text-amber-200">
-          💰 {board.gold} G
-        </p>
+        <div className="flex items-center gap-2">
+          <p className="rounded-full border border-amber-300/40 bg-amber-300/10 px-3 py-1 text-sm font-bold text-amber-200">
+            💰 {board.gold} G
+          </p>
+
+          <PendingLink
+            href="/shop"
+            className="rounded-full bg-amber-300 px-3 py-1 text-sm font-bold text-slate-950 transition hover:bg-amber-200"
+          >
+            🏪 お店へ
+          </PendingLink>
+        </div>
       </div>
 
       <ul className="grid gap-3 sm:grid-cols-2">

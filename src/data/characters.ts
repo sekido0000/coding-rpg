@@ -6,6 +6,7 @@ import {
   isCharacterType,
 } from "@/lib/characters/catalog";
 import { isCharacterPersonality } from "@/lib/characters/personality";
+import { toItemId } from "@/lib/items/catalog";
 
 type CharacterRecord = {
   id: string;
@@ -16,6 +17,8 @@ type CharacterRecord = {
   current_xp: number;
   required_xp: number;
   latest_activity: string;
+  companion_item: string | null;
+  aura_item: string | null;
 };
 
 type RepositoryRecord = {
@@ -63,7 +66,9 @@ export async function getCharacters(): Promise<
         level,
         current_xp,
         required_xp,
-        latest_activity
+        latest_activity,
+        companion_item,
+        aura_item
       )
     `)
     .eq("is_active", true)
@@ -137,6 +142,11 @@ export async function getCharacters(): Promise<
         requiredXp: character.required_xp,
         latestActivity:
           character.latest_activity,
+        companionItem: toItemId(
+          character.companion_item,
+          "companion",
+        ),
+        auraItem: toItemId(character.aura_item, "aura"),
       };
     });
   });

@@ -10,6 +10,7 @@ import {
 } from "@/lib/characters/catalog";
 import { PERSONALITY_INFO } from "@/lib/characters/personality";
 import type { Character } from "@/types/character";
+import { EquipmentLayers } from "@/components/items/equipment-layers";
 
 type CharacterCardProps = {
   character: Character;
@@ -58,14 +59,19 @@ export function CharacterCard({
           {definition.name}
         </div>
 
-        <Image
-          src={evolution.imagePath}
-          alt={`${character.name}の${evolution.name}`}
-          width={220}
-          height={220}
-          priority
-          className="h-52 w-52"
-        />
+        <EquipmentLayers
+          companionItem={character.companionItem}
+          auraItem={character.auraItem}
+        >
+          <Image
+            src={evolution.imagePath}
+            alt={`${character.name}の${evolution.name}`}
+            width={220}
+            height={220}
+            priority
+            className="h-52 w-52"
+          />
+        </EquipmentLayers>
       </div>
 
       <div className="space-y-5 p-6">
