@@ -1,7 +1,7 @@
 /*
  * 称号の一覧．
  *
- * 6つの軸（クエスト・キャラクター・コミット・進化・お店・ゴールド）ごとに，
+ * 6つの軸（クエスト・キャラクター・コミット・進化・雑貨店・ゴールド）ごとに，
  * 数が一定に届くと段階的にもらえる．
  * 名前の雰囲気は軸ごとにそろえる（クエストは冒険者，コミットは記録など）．
  */
@@ -96,9 +96,9 @@ export const TITLE_AXES: readonly TitleAxis[] = [
   },
   {
     id: "purchases",
-    label: "お店",
+    label: "雑貨店",
     unit: "回",
-    description: "お店で買った回数",
+    description: "雑貨店で買った回数",
     stages: [
       { threshold: 1, name: "はじめてのお買い物" },
       { threshold: 3, name: "常連さん" },

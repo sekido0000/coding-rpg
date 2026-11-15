@@ -134,13 +134,13 @@ export function EquipmentPicker({
           href="/shop"
           className="rounded-xl border border-amber-300/40 bg-amber-300/10 px-4 py-2 text-sm font-semibold text-amber-200 transition hover:bg-amber-300/20"
         >
-          🏪 お店へ（💰 {inventory.gold} G）
+          🏪 雑貨店へ（💰 {inventory.gold} G）
         </PendingLink>
       </div>
 
       {!hasItems ? (
         <p className="text-sm text-slate-400">
-          クエストでゴールドを集めて，お店で装備を買うと，ここで付けられます．
+          クエストでゴールドを集めて，雑貨店で装備を買うと，ここで付けられます．
         </p>
       ) : (
         <div className="space-y-5">

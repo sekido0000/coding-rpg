@@ -10,7 +10,7 @@ const ids = (count: number) =>
   Array.from({ length: count }, (_, index) => `character-${index}`);
 
 describe("ワールドの地図", () => {
-  it("キャラクター1体につき家が1軒あり，掲示板と道具屋が1つずつある", () => {
+  it("キャラクター1体につき家が1軒あり，掲示板と雑貨店が1つずつある", () => {
     const map = buildWorldMap(ids(5));
     const houses = map.lots.filter((lot) => lot.kind === "house");
 
@@ -21,14 +21,14 @@ describe("ワールドの地図", () => {
       map.lots.filter((lot) => lot.kind === "quest_board"),
     ).toHaveLength(1);
     expect(
-      map.lots.filter((lot) => lot.kind === "item_shop"),
+      map.lots.filter((lot) => lot.kind === "general_store"),
     ).toHaveLength(1);
   });
 
-  it("掲示板と道具屋は，奥の列の真ん中に並ぶ", () => {
+  it("掲示板と雑貨店は，奥の列の真ん中に並ぶ", () => {
     const map = buildWorldMap(ids(3));
     const board = map.lots.find((lot) => lot.kind === "quest_board")!;
-    const shop = map.lots.find((lot) => lot.kind === "item_shop")!;
+    const shop = map.lots.find((lot) => lot.kind === "general_store")!;
 
     expect(board.row).toBe(0);
     expect(shop.row).toBe(0);
@@ -88,5 +88,32 @@ describe("道に沿った移動", () => {
       expect(target.x).toBeGreaterThanOrEqual(map.roadMinX);
       expect(target.x).toBeLessThanOrEqual(map.roadMaxX);
     }
+  });
+});
+
+describe("ワールドの広さと飾り", () => {
+  it("キャラクターが少なくても，1列に14区画ある", () => {
+    const map = buildWorldMap(ids(1));
+
+    expect(map.lots.filter((lot) => lot.row === 0)).toHaveLength(14);
+  });
+
+  it("空いた区画には，飾りがある", () => {
+    const map = buildWorldMap(ids(3));
+    const empty = map.lots.filter((lot) => lot.kind === "empty");
+
+    expect(empty.length).toBeGreaterThan(0);
+    expect(empty.every((lot) => lot.decoration)).toBe(true);
+  });
+
+  it("掲示板と雑貨店は，キャラクターが多くても真ん中に並ぶ", () => {
+    // 区画が奇数列になりそうな数でも，列は偶数にそろえる
+    const map = buildWorldMap(ids(31));
+    const board = map.lots.find((lot) => lot.kind === "quest_board")!;
+    const shop = map.lots.find((lot) => lot.kind === "general_store")!;
+
+    expect(Math.abs((board.x + shop.x) / 2 - map.width / 2)).toBeLessThan(
+      1,
+    );
   });
 });

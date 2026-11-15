@@ -8,6 +8,7 @@ import { QuestPanel } from "@/components/quests/quest-panel";
 import { TitleBadge } from "@/components/titles/title-badge";
 import { WorldHome } from "@/components/world/world-home";
 import { getSelectedTitle } from "@/data/titles";
+import { getInventory } from "@/data/inventory";
 import { signOutAction } from "@/app/actions/auth-actions";
 import { createClient } from "@/lib/supabase/server";
 import { SignOutButton } from "@/components/auth/sign-out-button";
@@ -62,12 +63,14 @@ export default async function Home() {
     worldActivity,
     questBoard,
     selectedTitle,
+    inventory,
   ] = await Promise.all([
     getCharacters(),
     getRepositoriesAwaitingCharacter(),
     getWorldActivity(),
     getWeeklyQuestBoard(),
     getSelectedTitle(),
+    getInventory(),
   ]);
 
   const githubName =
@@ -128,7 +131,7 @@ export default async function Home() {
             <QuestBoard board={questBoard} />
           </QuestPanel>
           <HudLink href="/characters" icon="👥" label="キャラクター" />
-          <HudLink href="/shop" icon="🏪" label="お店" />
+          <HudLink href="/shop" icon="🏪" label="雑貨店" />
           <HudLink href="/titles" icon="🏅" label="称号" />
           <HudLink href="/how-to-use" icon="❔" label="使い方" />
 
@@ -160,6 +163,7 @@ export default async function Home() {
           characters={characters}
           worldActivity={worldActivity}
           hasPendingRewards={questBoard.hasPendingRewards}
+          inventory={inventory}
         />
       </div>
     </main>

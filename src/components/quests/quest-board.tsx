@@ -178,7 +178,7 @@ function QuestRow({
 
 /*
  * 今週のクエスト．ワールドの上に開くパネル（QuestPanel）の中に表示する．
- * 持っているゴールドとお店への入口は，ワールドの上の帯にある．
+ * 持っているゴールドと雑貨店への入口は，ワールドの上の帯にある．
  */
 export function QuestBoard({ board }: QuestBoardProps) {
   return (
