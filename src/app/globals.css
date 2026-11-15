@@ -203,6 +203,88 @@ body {
   animation: world-level-up 1.2s ease-in-out 3;
 }
 
+/* ---------- おとも ---------- */
+
+/* おともが小さく弾む */
+.companion-bob {
+  animation: companion-bob 0.8s ease-in-out infinite;
+}
+
+@keyframes companion-bob {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-8%);
+  }
+}
+
+/* ---------- 足元の装備 ---------- */
+
+/* ターミナルの光：文字が立ちのぼって消える */
+.aura-rise {
+  animation: aura-rise 2.5s ease-out infinite;
+  opacity: 0;
+}
+
+/* 星のきらめき：星がまたたく */
+.aura-twinkle {
+  animation: aura-twinkle 1.8s ease-in-out infinite;
+}
+
+/* 炎のオーラ：炎がゆらめく */
+.aura-flicker {
+  animation: aura-flicker 0.9s ease-in-out infinite alternate;
+  transform-origin: center bottom;
+}
+
+/* 虹のオーラ：虹色がゆっくり回る */
+.aura-spin {
+  animation: aura-spin 6s linear infinite;
+}
+
+@keyframes aura-rise {
+  0% {
+    opacity: 0;
+    transform: translateY(0);
+  }
+  20% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-300%);
+  }
+}
+
+@keyframes aura-twinkle {
+  0%,
+  100% {
+    opacity: 0.2;
+    transform: scale(0.6);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.1);
+  }
+}
+
+@keyframes aura-flicker {
+  0% {
+    transform: scaleY(0.9) scaleX(1);
+  }
+  100% {
+    transform: scaleY(1.12) scaleX(0.95);
+  }
+}
+
+@keyframes aura-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 /*
  * クエストの達成・失敗のハンコ．斜めに傾けて押す．
  * 押した瞬間のように，大きい状態から縮んで止まる．
@@ -291,7 +373,17 @@ body {
   .world-hop,
   .world-announce,
   .world-level-up,
-  .quest-stamp {
+  .quest-stamp,
+  .companion-bob,
+  .aura-twinkle,
+  .aura-flicker,
+  .aura-spin {
     animation: none;
+  }
+
+  /* 立ちのぼる文字は，動かさない代わりに薄く表示しておく */
+  .aura-rise {
+    animation: none;
+    opacity: 0.6;
   }
 }

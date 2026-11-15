@@ -14,6 +14,7 @@ import type {
   CharacterPersonality,
 } from "@/types/character";
 import { createClient } from "@/lib/supabase/client";
+import { toItemId } from "@/lib/items/catalog";
 
 type CharacterDashboardProps = {
   characters: Character[];
@@ -39,6 +40,8 @@ type CharacterRealtimeRecord = {
   current_xp: number;
   required_xp: number;
   latest_activity: string;
+  companion_item: string | null;
+  aura_item: string | null;
 };
 
 export function CharacterDashboard({
@@ -105,6 +108,11 @@ export function CharacterDashboard({
                       currentXp: updated.current_xp,
                       requiredXp: updated.required_xp,
                       latestActivity: updated.latest_activity,
+                      companionItem: toItemId(
+                        updated.companion_item,
+                        "companion",
+                      ),
+                      auraItem: toItemId(updated.aura_item, "aura"),
                     }
                   : character,
               ),

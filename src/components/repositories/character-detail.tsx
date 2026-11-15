@@ -10,17 +10,22 @@ import {
 import type { Character } from "@/types/character";
 import { GrowthTimeline } from "@/components/repositories/growth-timeline";
 import { getGrowthEvents } from "@/lib/growth/events";
+import { EquipmentLayers } from "@/components/items/equipment-layers";
+import { EquipmentPicker } from "@/components/items/equipment-picker";
+import type { Inventory } from "@/data/inventory";
 
 type CharacterDetailProps = {
   character: Character;
   growthEvents: Awaited<
     ReturnType<typeof getGrowthEvents>
   >;
+  inventory: Inventory;
 };
 
 export function CharacterDetail({
   character,
   growthEvents,
+  inventory,
 }: CharacterDetailProps) {
   const definition =
     CHARACTER_CATALOG[
@@ -133,14 +138,19 @@ export function CharacterDetail({
 
               <div className="repo-character-walk relative z-10">
                 <div className="repo-character-float">
-                  <Image
-                    src={evolution.imagePath}
-                    alt={`${character.name}の${evolution.name}`}
-                    width={520}
-                    height={520}
-                    priority
-                    className="repo-pixel-image h-auto w-[min(72vw,430px)] drop-shadow-[0_28px_20px_rgba(0,0,0,0.55)]"
-                  />
+                  <EquipmentLayers
+                    companionItem={character.companionItem}
+                    auraItem={character.auraItem}
+                  >
+                    <Image
+                      src={evolution.imagePath}
+                      alt={`${character.name}の${evolution.name}`}
+                      width={520}
+                      height={520}
+                      priority
+                      className="repo-pixel-image h-auto w-[min(60vw,400px)] drop-shadow-[0_28px_20px_rgba(0,0,0,0.55)]"
+                    />
+                  </EquipmentLayers>
                 </div>
                 <div className="repo-character-shadow" />
               </div>
@@ -211,6 +221,11 @@ export function CharacterDetail({
 
           </aside>
         </div>
+
+        <EquipmentPicker
+          character={character}
+          inventory={inventory}
+        />
       </div>
     </main>
   );
