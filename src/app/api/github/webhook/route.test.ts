@@ -561,3 +561,81 @@ describe("過去の履歴や大量のコミットのpush", () => {
     ).toHaveLength(60);
   });
 });
+
+describe("週のクエスト", () => {
+  // FEAT_COMMIT（2026-11-14）が含まれる週の月曜日（日本時間）
+  const WEEK = "2026-11-09";
+
+  it("pushで達成した段階の報酬が，ユーザーのゴールドに入る", async () => {
+    const response = await POST(
+      webhookRequest(pushPayload()),
+    );
+
+    expect(response.status).toBe(200);
+
+    // 1回コミット（★1）と1日コミット（★1）．本文がないので毎回クエストは失敗
+    expect(db.rows("quest_completions")).toEqual([
+      expect.objectContaining({
+        user_id: "user-1",
+        week_start: WEEK,
+        quest_id: "commits",
+        stage: 1,
+      }),
+      expect.objectContaining({
+        user_id: "user-1",
+        week_start: WEEK,
+        quest_id: "days",
+        stage: 1,
+      }),
+    ]);
+    expect(db.rows("user_wallets")).toEqual([
+      { user_id: "user-1", gold: 20 },
+    ]);
+  });
+
+  it("すでに渡した段階の報酬は，次のpushで二重に渡さない", async () => {
+    await POST(webhookRequest(pushPayload()));
+    await POST(
+      webhookRequest(pushPayload(), {
+        deliveryId: "delivery-2",
+      }),
+    );
+
+    /*
+     * 2回目のpushで新しく達成したのは，経験値30（★1）だけ．
+     * 1回コミット・1日コミットの★1は，もう一度は渡さない．
+     */
+    expect(
+      db
+        .rows("quest_completions")
+        .map((row) => `${row.quest_id}:${row.stage}`),
+    ).toEqual(["commits:1", "days:1", "xp:1"]);
+    expect(db.rows("user_wallets")).toEqual([
+      { user_id: "user-1", gold: 30 },
+    ]);
+  });
+
+  it("報酬を渡すのに失敗しても，経験値はそのまま入り，再送はしない", async () => {
+    db.failNext("grant_quest_rewards", "rpc");
+
+    const response = await POST(
+      webhookRequest(pushPayload()),
+    );
+
+    // 再送されると経験値が二重に入るので，成功として返す
+    expect(response.status).toBe(200);
+    expect(character().current_xp).toBe(FEAT_XP);
+    expect(db.rows("user_wallets")).toHaveLength(0);
+
+    // 次のpushで，渡しそこねた報酬（★1 2つ）と，新しく達成した経験値30の★1をまとめて渡す
+    await POST(
+      webhookRequest(pushPayload(), {
+        deliveryId: "delivery-2",
+      }),
+    );
+
+    expect(db.rows("user_wallets")).toEqual([
+      { user_id: "user-1", gold: 30 },
+    ]);
+  });
+});
