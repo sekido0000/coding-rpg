@@ -22,6 +22,8 @@ export type WeeklyQuestBoard = {
   everyTimeStreak: number;
   gold: number;
   progress: QuestBoardItem[];
+  // 達成したのに，まだ受け取っていない報酬がある
+  hasPendingRewards: boolean;
 };
 
 /*
@@ -111,5 +113,8 @@ export async function getWeeklyQuestBoard(): Promise<WeeklyQuestBoard> {
     ),
     gold: wallet.data?.gold ?? 0,
     progress,
+    hasPendingRewards: progress.some(
+      (item) => item.achievedStages > item.claimedStages,
+    ),
   };
 }

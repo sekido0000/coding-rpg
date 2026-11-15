@@ -24,7 +24,7 @@ import {
 type CharacterSetupFormProps = {
   repositoryId: string;
   repositoryName: string;
-  returnTo?: "/" | "/characters/setup";
+  returnTo?: "/" | "/characters" | "/characters/setup";
 };
 
 function SubmitButton() {

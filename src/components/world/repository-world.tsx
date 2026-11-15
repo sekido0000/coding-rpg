@@ -261,7 +261,8 @@ export function RepositoryWorld({
   return (
     <section
       aria-labelledby="repository-world-title"
-      className="repo-stage relative mb-10 h-[340px] overflow-hidden rounded-[2rem] border border-emerald-400/15 sm:h-[420px]"
+      // 画面いっぱいに広げる（高さは置く側で決める）
+      className="repo-stage relative h-full overflow-hidden"
     >
       <div className="repo-moon" />
       <div className="repo-stars" />
