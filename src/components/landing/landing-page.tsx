@@ -1,6 +1,7 @@
 import { GitHubLoginButton } from "@/components/auth/github-login-button";
 import { GuideSections } from "@/components/guide/guide-sections";
 import { AppLogo } from "@/components/layout/app-logo";
+import { PendingLink } from "@/components/ui/pending-link";
 
 const features = [
   {
@@ -108,7 +109,13 @@ export function LandingPage() {
         <GuideSections />
 
         <footer className="mt-auto border-t border-slate-800 pb-2 pt-10 text-center text-sm text-slate-600">
-          © 2026 Coding RPG. All rights reserved.
+          <PendingLink
+            href="/privacy"
+            className="text-slate-400 underline-offset-2 hover:text-white hover:underline"
+          >
+            プライバシーポリシー
+          </PendingLink>
+          <p className="mt-2">© 2026 Coding RPG. All rights reserved.</p>
         </footer>
       </div>
     </main>

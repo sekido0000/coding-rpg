@@ -19,7 +19,13 @@ export default function HowToUsePage() {
         <GuideSections />
 
         <footer className="mt-16 text-center text-sm text-slate-600">
-          © 2026 Coding RPG. All rights reserved.
+          <PendingLink
+            href="/privacy"
+            className="text-slate-400 underline-offset-2 hover:text-white hover:underline"
+          >
+            プライバシーポリシー
+          </PendingLink>
+          <p className="mt-2">© 2026 Coding RPG. All rights reserved.</p>
         </footer>
       </div>
     </main>
