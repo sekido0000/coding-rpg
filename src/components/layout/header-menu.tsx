@@ -86,6 +86,12 @@ export function HeaderMenu() {
             <SignOutButton />
           </form>
           <PendingLink
+            href="/privacy"
+            className="block rounded-lg px-3 py-2 text-xs text-slate-500 transition hover:bg-white/10 hover:text-white"
+          >
+            プライバシーポリシー
+          </PendingLink>
+          <PendingLink
             href="/account/delete"
             className="block rounded-lg px-3 py-2 text-xs text-slate-500 transition hover:bg-white/10 hover:text-red-300"
           >
