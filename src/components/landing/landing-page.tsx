@@ -85,25 +85,35 @@ export function LandingPage() {
             <span className="inline-block">ボスに挑んだりもできます．</span>
           </p>
 
-          <a
-            href="#how-to-use"
-            className="mt-8 inline-flex items-center gap-2 rounded-xl border border-cyan-400/30 bg-cyan-400/10 px-5 py-3 text-sm font-semibold text-cyan-200 transition hover:border-cyan-300/60 hover:bg-cyan-400/20"
-          >
-            使い方を見る
-            {/* 文字の「↓」はフォントによって下にずれるため，図形で描く */}
-            <svg
-              viewBox="0 0 16 16"
-              aria-hidden="true"
-              className="h-4 w-4"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
+          <div className="mt-8 flex flex-wrap gap-3">
+            {/* ログインしなくても触れる，見本のワールド */}
+            <PendingLink
+              href="/demo"
+              className="inline-flex items-center gap-2 rounded-xl bg-emerald-400 px-5 py-3 text-sm font-bold text-slate-950 transition hover:bg-emerald-300"
             >
-              <path d="M8 3v10M3.5 8.5 8 13l4.5-4.5" />
-            </svg>
-          </a>
+              🌍 ワールドをのぞいてみる
+            </PendingLink>
+
+            <a
+              href="#how-to-use"
+              className="inline-flex items-center gap-2 rounded-xl border border-cyan-400/30 bg-cyan-400/10 px-5 py-3 text-sm font-semibold text-cyan-200 transition hover:border-cyan-300/60 hover:bg-cyan-400/20"
+            >
+              使い方を見る
+              {/* 文字の「↓」はフォントによって下にずれるため，図形で描く */}
+              <svg
+                viewBox="0 0 16 16"
+                aria-hidden="true"
+                className="h-4 w-4"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M8 3v10M3.5 8.5 8 13l4.5-4.5" />
+              </svg>
+            </a>
+          </div>
         </section>
 
         <section className="mb-20 grid gap-5 md:grid-cols-3">
