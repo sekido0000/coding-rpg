@@ -549,7 +549,7 @@ export function StoreInterior({ inventory }: { inventory: Inventory }) {
           <div>
             <h3 className="text-lg font-bold text-white">🛍️ 品物</h3>
             <p className="mt-0.5 text-xs text-slate-400">
-              買った装備は，キャラクターの詳細ページの「装備」から付けられます．
+              買った装飾は，キャラクターの詳細ページの「装飾」から付けられます．
             </p>
           </div>
           <p className="rounded-full border border-amber-300/40 bg-amber-300/10 px-3 py-1 text-sm font-bold text-amber-200">

@@ -1,12 +1,12 @@
 /*
- * 雑貨店で買える装備の一覧．
+ * 雑貨店で買える装飾（見た目だけで，強さは変わらない）の一覧．
  *
  * 1週間のクエストの報酬は最大 210 G なので，
  * 安いものは1週間，高いものは1か月ほどで買える値段にする．
- * 装備を増やす時はここに足すだけでよい（DB の変更はいらない）．
+ * 装飾を増やす時はここに足すだけでよい（DB の変更はいらない）．
  */
 
-// 装備を付ける場所．companion：おとも，aura：足元
+// 装飾を付ける場所．companion：おとも，aura：足元
 export type ItemSlot = "companion" | "aura";
 
 export const ITEM_SLOT_LABELS: Record<ItemSlot, string> = {
@@ -121,7 +121,7 @@ export function isItemSlot(value: unknown): value is ItemSlot {
   return value === "companion" || value === "aura";
 }
 
-// DB の値を装備に直す．一覧にない値（消した装備など）は付けていない扱いにする
+// DB の値を装飾に直す．一覧にない値（消した装飾など）は付けていない扱いにする
 export function toItemId(
   value: string | null | undefined,
   slot: ItemSlot,

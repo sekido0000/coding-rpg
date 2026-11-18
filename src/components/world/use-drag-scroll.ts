@@ -9,7 +9,7 @@ const DRAG_THRESHOLD = 12;
 /*
  * 世界を見渡す操作．
  * - マウス：ドラッグで動かす
- * - ホイール：縦に動かせない時は，横に動かす
+ * - ホイール：縦に動かせない時は，横に動かす（Ctrl＋ホイールは拡大・縮小に使う）
  * - スマホ：指でのスクロール（ブラウザの標準の動き）をそのまま使う
  *
  * ドラッグした後にキャラクターや建物の上で指を離しても，
@@ -87,6 +87,11 @@ export function useDragScroll(ref: RefObject<HTMLElement | null>) {
     };
 
     const onWheel = (event: WheelEvent) => {
+      // Ctrl＋ホイール（ピンチ）は拡大・縮小に使うので，ここでは動かさない
+      if (event.ctrlKey) {
+        return;
+      }
+
       const canScrollVertically =
         element.scrollHeight > element.clientHeight;
 

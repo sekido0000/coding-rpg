@@ -39,13 +39,15 @@ describe("ワールドの地図", () => {
     );
   });
 
-  it("キャラクターが増えると，世界が横に広がる", () => {
+  it("キャラクターが増えると，縦にも横にも広がり，正方形に近い形を保つ", () => {
     const small = buildWorldMap(ids(2));
-    const large = buildWorldMap(ids(30));
+    const large = buildWorldMap(ids(60));
 
     expect(large.width).toBeGreaterThan(small.width);
+    expect(large.height).toBeGreaterThan(small.height);
+    expect(large.width / large.height).toBeLessThan(2);
     expect(large.lots.filter((lot) => lot.kind === "house")).toHaveLength(
-      30,
+      60,
     );
   });
 
@@ -94,10 +96,11 @@ describe("道に沿った移動", () => {
 });
 
 describe("ワールドの広さと飾り", () => {
-  it("キャラクターが少なくても，1列に14区画ある", () => {
+  it("キャラクターが少なくても，4列×8区画ある", () => {
     const map = buildWorldMap(ids(1));
 
-    expect(map.lots.filter((lot) => lot.row === 0)).toHaveLength(14);
+    expect(map.roadYs).toHaveLength(4);
+    expect(map.lots.filter((lot) => lot.row === 0)).toHaveLength(8);
   });
 
   it("空いた区画には，飾りがある", () => {
@@ -121,12 +124,12 @@ describe("ワールドの広さと飾り", () => {
 });
 
 describe("キャラクターが歩く範囲", () => {
-  it("建物が建っているあたりだけを歩き，世界の端までは行かない", () => {
+  it("建物が建っているあたりを歩き，地図の外には出ない", () => {
     const map = buildWorldMap(ids(3));
     const built = map.lots.filter((lot) => lot.kind !== "empty");
 
-    expect(map.walkMinX).toBeGreaterThan(map.roadMinX);
-    expect(map.walkMaxX).toBeLessThan(map.roadMaxX);
+    expect(map.walkMinX).toBeGreaterThanOrEqual(map.roadMinX);
+    expect(map.walkMaxX).toBeLessThanOrEqual(map.roadMaxX);
 
     // すべての建物の扉が，歩く範囲の中にある
     for (const lot of built) {
@@ -324,5 +327,36 @@ describe("工房", () => {
     for (const house of map.lots.filter((lot) => lot.kind === "house")) {
       expect(distance(house)).toBeLessThanOrEqual(distance(workshops[0]));
     }
+  });
+});
+
+describe("正方形に近いワールド", () => {
+  it("上の列（マイナス）に保存した建物も，その場所に置かれる", () => {
+    const map = buildWorldMap(ids(2), [{ key: "cafe", row: -1, offset: 2 }]);
+    const cafe = map.lots.find((lot) => lot.buildingId === "cafe");
+
+    expect(cafe).toMatchObject({ row: -1, offset: 2 });
+    expect(cafe!.bottom).toBeLessThan(
+      map.lots.find((lot) => lot.kind === "quest_board")!.bottom,
+    );
+  });
+
+  it("家は，掲示板の列とその下の列から先に埋まる", () => {
+    const map = buildWorldMap(ids(4));
+    const rows = map.lots
+      .filter((lot) => lot.kind === "house")
+      .map((lot) => lot.row);
+
+    expect(rows.every((row) => row === 0 || row === 1)).toBe(true);
+  });
+
+  it("どの道からどの道へも，つなぎの道を通って行ける", () => {
+    const map = buildWorldMap(ids(10));
+    const from = { x: map.walkMinX, y: map.roadYs[0] };
+    const to = { x: map.walkMaxX, y: map.roadYs.at(-1)! };
+    const route = planRoute(map, from, to);
+
+    expect(route.at(-1)).toEqual(to);
+    expect(map.connectorXs).toContain(route[0].x);
   });
 });

@@ -21,7 +21,7 @@ export async function getPlacements(): Promise<Placement[]> {
 
   return (data ?? []).flatMap((row) =>
     isLotKey(row.building_id) &&
-    (row.lot_row === 0 || row.lot_row === 1)
+    Number.isInteger(row.lot_row)
       ? [
           {
             key: row.building_id,

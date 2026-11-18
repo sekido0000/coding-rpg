@@ -25,7 +25,7 @@ export type Character = {
   requiredXp: number;
   latestActivity: string;
   githubInstallationId: number;
-  // 付けている装備．付けていない時は null
+  // 付けている装飾（おとも・足元）．付けていない時は null
   companionItem: ItemId | null;
   auraItem: ItemId | null;
 };

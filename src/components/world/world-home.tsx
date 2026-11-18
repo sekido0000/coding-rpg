@@ -13,7 +13,7 @@ type WorldHomeProps = {
   worldActivity: Record<string, ActivitySummary>;
   // 受け取り待ちのクエストの報酬がある（掲示板に印を付ける）
   hasPendingRewards: boolean;
-  // 持っているゴールドと装備（雑貨店の中で買い物をする時に使う）
+  // 持っているゴールドと装飾（雑貨店の中で買い物をする時に使う）
   inventory: Inventory;
   // 建てた建物と，その場所
   placements: Placement[];
