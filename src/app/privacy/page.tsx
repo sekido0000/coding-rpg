@@ -116,7 +116,7 @@ export default function PrivacyPolicyPage() {
                     <th className="py-2 pr-4 font-semibold">サービス</th>
                     <th className="py-2 pr-4 font-semibold">事業者（所在国）</th>
                     <th className="py-2 pr-4 font-semibold">用途</th>
-                    <th className="py-2 font-semibold">情報の保存場所</th>
+                    <th className="py-2 font-semibold">主な保存場所</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -141,6 +141,9 @@ export default function PrivacyPolicyPage() {
                 </tbody>
               </table>
             </div>
+            <p>
+              なお，アクセス記録（ログ），バックアップその他の情報は，各事業者が管理する日本国外（主に米国）のサーバーにおいて処理され，又は保存される場合があります．
+            </p>
           </Article>
 
           <Article title="第5条（安全管理措置）">
