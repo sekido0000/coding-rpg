@@ -82,10 +82,45 @@ function between([min, max]: [number, number], random: () => number) {
   return min + (max - min) * random();
 }
 
-// 最初は自分の家の前に立つ（サーバーとブラウザで同じ画面になるよう，乱数は使わない）
-export function getInitialWalker(door: Position): Walker {
+// 文字列から 0以上1未満の数を2つ作る（同じ文字列なら毎回同じ）
+function hashToUnits(text: string): [number, number] {
+  let hash = 2166136261;
+
+  for (let index = 0; index < text.length; index += 1) {
+    hash = Math.imul(hash ^ text.charCodeAt(index), 16777619);
+  }
+
+  const unsigned = hash >>> 0;
+
+  return [(unsigned & 0xffff) / 0x10000, (unsigned >>> 16) / 0x10000];
+}
+
+/*
+ * ワールドを開いた時に，キャラクターが最初に立つ場所．
+ * 全員が自分の家の前に並ぶと不自然なので，歩く範囲の道の上にばらけさせる．
+ * キャラクターの順番で横に均等に分け，その中で少しずらす．奥と手前のどちらの道かも散らす．
+ * サーバーとブラウザで同じ画面になるよう，乱数は使わずキャラクターの ID から決める．
+ */
+export function getStartPosition(
+  map: WorldMap,
+  characterId: string,
+  index: number,
+  count: number,
+): Position {
+  const [shift, side] = hashToUnits(characterId);
+  const slot = (index + 0.5 + (shift - 0.5) * 0.6) / Math.max(count, 1);
+  const rate = Math.min(Math.max(slot, 0.05), 0.95);
+
   return {
-    position: door,
+    x: Math.round(map.walkMinX + (map.walkMaxX - map.walkMinX) * rate),
+    y: map.roadYs[side < 0.5 ? 0 : 1],
+  };
+}
+
+// 最初はその場所に立っている
+export function getInitialWalker(position: Position): Walker {
+  return {
+    position,
     duration: 0,
     isFacingLeft: false,
     arrivedAt: 0,
