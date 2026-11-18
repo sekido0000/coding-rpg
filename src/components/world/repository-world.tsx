@@ -108,6 +108,11 @@ type RepositoryWorldProps = {
   inventory: Inventory;
   // 建物の場所（建てた建物と，移した家・掲示板・雑貨店）
   placements: Placement[];
+  /*
+   * ログインしていない人に見せる見本のワールド．
+   * 歩く・話す・建物の中をのぞくはそのまま動かし，建てる・買う・ほかのページへ移ることはせずに案内を出す．
+   */
+  isDemo?: boolean;
 };
 
 // 建物の場所の変更（押した瞬間に表示を切り替えるために使う）
@@ -377,6 +382,7 @@ function LotBuilding({
   onOpen,
   onBuildAction,
   onDragStart,
+  onDemoBlocked,
 }: {
   lot: Lot;
   houseIndex: number;
@@ -394,6 +400,8 @@ function LotBuilding({
   onOpen: (building: OpenBuilding) => void;
   onBuildAction: (lot: Lot) => void;
   onDragStart: (lot: Lot, event: ReactPointerEvent) => void;
+  // 見本のワールドの時だけ渡す．ログインしないと使えない建物を押した時に呼ぶ
+  onDemoBlocked?: () => void;
 }) {
   const router = useRouter();
   // ボス戦のページへ移っている間は，押せたことが分かるよう「移動中…」を出す
@@ -449,6 +457,18 @@ function LotBuilding({
 
   // ふだん押した時に開く画面（掲示板はクエストのパネル，ダンジョンの入口はボス戦のページ，工房は工房のページ）
   const open = () => {
+    // 見本のワールドでは，買い物・クエスト・ボス戦・工房は使えないので案内を出す
+    if (
+      onDemoBlocked &&
+      (lot.kind === "general_store" ||
+        lot.kind === "quest_board" ||
+        lot.kind === "dungeon_gate" ||
+        lot.kind === "workshop")
+    ) {
+      onDemoBlocked();
+      return;
+    }
+
     if (lot.kind === "house" && owner) {
       onOpen({ kind: "house", characterId: owner.id });
     } else if (lot.kind === "general_store") {
@@ -552,6 +572,7 @@ export function RepositoryWorld({
   hasPendingRewards,
   inventory,
   placements,
+  isDemo = false,
 }: RepositoryWorldProps) {
   const [openBuilding, setOpenBuilding] = useState<OpenBuilding | null>(
     null,
@@ -902,6 +923,12 @@ export function RepositoryWorld({
     window.setTimeout(() => setBuildMessage(null), 4000);
   };
 
+  // 見本のワールドで，ログインしないと使えないものを押した時の案内
+  const showDemoNotice = () =>
+    showBuildMessage(
+      "ログインすると，あなたのリポジトリのキャラクターがここで暮らし始めます",
+    );
+
   /*
    * 建物の場所を変える．押した瞬間に表示を切り替え，裏で保存する．
    * 保存に失敗した時は，元の場所に戻ってお知らせを出す．
@@ -1126,7 +1153,8 @@ export function RepositoryWorld({
           >
             ✕ 建築モードをやめる
           </button>
-        ) : (
+        ) : isDemo ? null : (
+          // 見本のワールドでは出さない（ログインの入口はページの上に置く）
           <div className="flex flex-wrap justify-end gap-2">
             {/* 新しい仲間（キャラクター）を迎える．押すと確認を出してから GitHub へ */}
             <InviteButton />
@@ -1312,8 +1340,11 @@ export function RepositoryWorld({
                   onOpen={(building) => {
                     setOpenBuilding(building);
                     // アプリの改善のための記録（建物の中をのぞいた回数）
-                    void recordClientUsageAction("building_peek");
+                    if (!isDemo) {
+                      void recordClientUsageAction("building_peek");
+                    }
                   }}
+                  onDemoBlocked={isDemo ? showDemoNotice : undefined}
                   onBuildAction={handleBuildAction}
                   onDragStart={handleDragStart}
                 />
@@ -1368,6 +1399,13 @@ export function RepositoryWorld({
                 <Link
                   key={character.id}
                   href={`/repositories/${character.repositoryId}`}
+                  onClick={(event) => {
+                    // 見本のワールドでは詳細を開かず，案内を出す
+                    if (isDemo) {
+                      event.preventDefault();
+                      showDemoNotice();
+                    }
+                  }}
                   aria-label={`${character.name}（${repositoryName}・レベル${character.level}）の詳細を見る`}
                   tabIndex={isInside ? -1 : undefined}
                   className={`group absolute z-[var(--depth)] -translate-x-1/2 -translate-y-full cursor-pointer rounded-xl outline-none before:absolute before:-inset-3 before:content-[''] hover:z-[5001] focus-visible:z-[5001] focus-visible:ring-2 focus-visible:ring-emerald-300 ${
@@ -1504,6 +1542,7 @@ export function RepositoryWorld({
             >
               <HouseInterior
                 character={character}
+                showStatusLink={!isDemo}
                 isHome={walker?.insideOf === "home" && insideUntil > 0}
                 // 遊びに来ているほかのキャラクター
                 guests={visitorsOf(houseLotKey(character.id)).filter(
