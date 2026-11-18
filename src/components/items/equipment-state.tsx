@@ -21,9 +21,9 @@ type EquipmentState = {
 const EquipmentContext = createContext<EquipmentState | null>(null);
 
 /*
- * キャラクターの詳細ページで，付けている装備を共有する．
+ * キャラクターの詳細ページで，付けている装飾を共有する．
  *
- * 付け替えを押した瞬間に，上のキャラクターの絵と下の装備の欄を
+ * 付け替えを押した瞬間に，上のキャラクターの絵と下の装飾の欄を
  * 両方とも切り替える（楽観的更新）．保存は裏で行い，
  * 失敗した時は元の表示に戻る．
  */
@@ -69,7 +69,7 @@ export function useEquipmentState() {
   return state;
 }
 
-// 共有している装備をキャラクターの絵に重ねる
+// 共有している装飾をキャラクターの絵に重ねる
 export function OptimisticEquipmentLayers({
   children,
 }: {

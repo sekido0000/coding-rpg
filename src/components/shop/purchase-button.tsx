@@ -20,7 +20,7 @@ const INITIAL_STATE: PurchaseState = {
 };
 
 /*
- * 装備を1個買うボタン．
+ * 装飾を1個買うボタン．
  * 買っている間は押せないようにして，続けて押しても1回だけ買うようにする．
  */
 export function PurchaseButton({

@@ -20,7 +20,7 @@ import {
 
 import { openQuestPanel } from "@/components/quests/quest-panel";
 import { Spinner } from "@/components/ui/spinner";
-import { RedirectLink } from "@/components/ui/redirect-link";
+import { InviteButton } from "@/components/world/invite-button";
 import { EquipmentLayers } from "@/components/items/equipment-layers";
 import {
   FlowerBed,
@@ -103,7 +103,7 @@ type RepositoryWorldProps = {
   activity: Record<string, ActivitySummary>;
   // 受け取り待ちのクエストの報酬がある時は，掲示板に印を付ける
   hasPendingRewards: boolean;
-  // 持っているゴールドと装備（雑貨店の中で買い物をする時に使う）
+  // 持っているゴールドと装飾（雑貨店の中で買い物をする時に使う）
   inventory: Inventory;
   // 建物の場所（建てた建物と，移した家・掲示板・雑貨店）
   placements: Placement[];
@@ -1127,14 +1127,8 @@ export function RepositoryWorld({
           </button>
         ) : (
           <div className="flex flex-wrap justify-end gap-2">
-            {/* キャラクターを増やす（GitHub でリポジトリを選ぶ） */}
-            <RedirectLink
-              href="/github/install"
-              pendingText="GitHubへ移動中..."
-              className="rounded-xl bg-emerald-400 px-3 py-1.5 text-sm font-bold text-slate-950 shadow-lg transition hover:bg-emerald-300"
-            >
-              ＋ リポジトリを連携
-            </RedirectLink>
+            {/* 新しい仲間（キャラクター）を迎える．押すと確認を出してから GitHub へ */}
+            <InviteButton />
             <button
               type="button"
               onClick={() => setIsBuildMode(true)}

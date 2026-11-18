@@ -27,19 +27,26 @@ type UsageStep = {
 const steps: UsageStep[] = [
   {
     number: "STEP 1",
-    title: "リポジトリの連携を始める",
+    title: "新しい仲間を迎える",
     description:
-      "GitHubでログインすると，ワールドが表示されます．右上のボタンから，育てたいリポジトリの連携を始めます．",
+      "GitHubでログインすると，ワールドが表示されます．キャラクターはリポジトリごとに1体生まれるので，右上のボタンからリポジトリを選びに行きます．",
     image: "/screenshots/step1.png",
     imageWidth: 1280,
     imageHeight: 420,
     highlights: [
       {
-        left: 77.8,
+        left: 80.1,
         top: 2.4,
-        width: 13.3,
+        width: 11,
         height: 10.5,
-        caption: "「＋ リポジトリを連携」を押す",
+        caption: "「＋ 仲間を増やす」を押す",
+      },
+      {
+        left: 55.2,
+        top: 54.2,
+        width: 10.9,
+        height: 11.9,
+        caption: "確認が出たら「GitHub へ進む」を押す",
       },
     ],
   },

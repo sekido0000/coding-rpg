@@ -6,7 +6,7 @@ import { getInventory } from "@/data/inventory";
 export const dynamic = "force-dynamic";
 
 /*
- * 雑貨店．クエストで集めたゴールドで装備を買う．
+ * 雑貨店．クエストで集めたゴールドで装飾を買う．
  * 1個買うと1体に付けられる．付けるのはキャラクターの詳細ページで行う．
  * ワールドの雑貨店の建物の中でも，同じ品物を買える．
  */
@@ -31,8 +31,8 @@ export default async function ShopPage() {
           <div>
             <h1 className="text-3xl font-black text-white">🏪 雑貨店</h1>
             <p className="mt-2 text-sm text-slate-400">
-              クエストで集めたゴールドで装備を買えます．1個買うと1体に付けられます．
-              付けるのは，キャラクターの詳細ページの「装備」からです．
+              クエストで集めたゴールドで装飾を買えます．1個買うと1体に付けられます．
+              付けるのは，キャラクターの詳細ページの「装飾」からです．
             </p>
           </div>
 

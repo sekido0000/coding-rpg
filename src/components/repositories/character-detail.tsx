@@ -70,7 +70,7 @@ export function CharacterDetail({
       : 0;
 
   return (
-    // 付け替えた装備を，キャラクターの絵と装備の欄で共有する
+    // 付け替えた装飾を，キャラクターの絵と装飾の欄で共有する
     <EquipmentStateProvider
       companionItem={character.companionItem}
       auraItem={character.auraItem}
