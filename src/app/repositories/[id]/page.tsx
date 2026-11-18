@@ -7,6 +7,7 @@ import { getOwnedGear } from "@/data/gear";
 import { getGrowthEvents } from "@/lib/growth/events";
 import { getInventory } from "@/data/inventory";
 import { recordUsage } from "@/lib/analytics/record";
+import { getRequestOrigin } from "@/lib/site";
 import { createClient } from "@/lib/supabase/server";
 
 export default async function RepositoryPage({
@@ -34,10 +35,17 @@ export default async function RepositoryPage({
     after(() => recordUsage(userId, "character_detail", characterId));
   }
 
-  const [growthEvents, inventory, ownedGear] = await Promise.all([
+  const [growthEvents, inventory, ownedGear, badge, origin] = await Promise.all([
     getGrowthEvents(character.id),
     getInventory(),
     getOwnedGear(characters.map((candidate) => candidate.id)),
+    // RLS で本人のキャラクターだけが返る
+    supabase
+      .from("characters")
+      .select("badge_token")
+      .eq("id", character.id)
+      .maybeSingle(),
+    getRequestOrigin(),
   ]);
 
   return (
@@ -46,6 +54,8 @@ export default async function RepositoryPage({
       growthEvents={growthEvents}
       inventory={inventory}
       ownedGear={ownedGear}
+      badgeToken={badge.data?.badge_token ?? null}
+      origin={origin}
       characterNames={Object.fromEntries(
         characters.map((candidate) => [candidate.id, candidate.name]),
       )}

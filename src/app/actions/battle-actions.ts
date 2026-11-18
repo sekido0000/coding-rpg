@@ -17,7 +17,8 @@ import { MAX_PARTY_SIZE, fillWithHelpers } from "@/lib/battle/party";
 import { getEquippedGear } from "@/lib/battle/owned-gear";
 import { simulateBattle, type BattleResult } from "@/lib/battle/simulate";
 import { getWeekStart } from "@/lib/quests/weekly";
-import { recordUsage } from "@/lib/analytics/record";
+import { recordBattleResult, recordUsage } from "@/lib/analytics/record";
+import { getRole } from "@/lib/battle/stats";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
@@ -128,8 +129,25 @@ export async function challengeBossAction(
     seed: crypto.getRandomValues(new Uint32Array(1))[0],
   });
 
-  // アプリの改善のための記録（挑んだ回数）
-  after(() => recordUsage(user.id, "battle_challenge"));
+  // アプリの改善のための記録（挑んだ回数と，勝ち負けを含めた結果）
+  const userId = user.id;
+  after(() => recordUsage(userId, "battle_challenge"));
+  after(() =>
+    recordBattleResult(userId, {
+      bossId,
+      star,
+      isWin: result.isWin,
+      isTimeout: result.isTimeout,
+      rounds: result.rounds,
+      party: members.map((member) => ({
+        characterType: member.characterType,
+        level: member.level,
+        role: getRole(member.characterType),
+        isHelper: member.isHelper ?? false,
+        gearCount: member.gear?.length ?? 0,
+      })),
+    }),
+  );
 
   if (!result.isWin) {
     return { ok: true, bossId, star, result, reward: null };

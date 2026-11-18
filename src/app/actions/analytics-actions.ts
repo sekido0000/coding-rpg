@@ -40,7 +40,7 @@ export type AnalyticsSettingResult = {
 
 /*
  * 「分析に使わない」の設定を変える．
- * 使わないにした時は，それまでの記録（使い方の回数・比べる元）を消す．
+ * 使わないにした時は，それまでの記録（使い方の回数・比べる元・ボス戦の結果）を消す．
  */
 export async function setAnalyticsOptOutAction(
   optOut: boolean,
@@ -74,6 +74,7 @@ export async function setAnalyticsOptOutAction(
     const results = await Promise.all([
       admin.from("usage_counts").delete().eq("user_id", userId),
       admin.from("commit_baselines").delete().eq("user_id", userId),
+      admin.from("battle_results").delete().eq("user_id", userId),
     ]);
 
     for (const result of results) {

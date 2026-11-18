@@ -20,6 +20,8 @@ export const USAGE_EVENTS = [
   "workshop_open",
   // 雑貨店（のページ）を開いた
   "shop_open",
+  // バッジを作った
+  "badge_enable",
 ] as const;
 
 export type UsageEvent = (typeof USAGE_EVENTS)[number];

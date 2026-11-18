@@ -14,6 +14,7 @@ import {
   EquipmentStateProvider,
   OptimisticEquipmentLayers,
 } from "@/components/items/equipment-state";
+import { BadgePanel } from "@/components/badges/badge-panel";
 import { CharacterGearPanel } from "@/components/battle/character-gear-panel";
 import { EquipmentPicker } from "@/components/items/equipment-picker";
 import type { Inventory } from "@/data/inventory";
@@ -27,6 +28,9 @@ type CharacterDetailProps = {
   inventory: Inventory;
   ownedGear: OwnedGear[];
   characterNames: Record<string, string>;
+  // キャラクター1体のバッジの URL に使う文字列（出していない時は null）
+  badgeToken: string | null;
+  origin: string;
 };
 
 export function CharacterDetail({
@@ -35,6 +39,8 @@ export function CharacterDetail({
   inventory,
   ownedGear,
   characterNames,
+  badgeToken,
+  origin,
 }: CharacterDetailProps) {
   const definition =
     CHARACTER_CATALOG[
@@ -247,6 +253,24 @@ export function CharacterDetail({
           ownedGear={ownedGear}
           characterNames={characterNames}
         />
+
+        {/* リポジトリの README などに貼る小さいバッジ */}
+        <section aria-labelledby="character-badge" className="repo-panel mt-5 p-6">
+          <p className="repo-kicker">Badge</p>
+          <h2 id="character-badge" className="mt-1 text-lg font-bold text-white">
+            README に貼るバッジ
+          </h2>
+          <p className="mb-4 mt-2 text-sm leading-6 text-slate-400">
+            このキャラクターの小さなバッジです．貼りたい人だけ，リポジトリの README などに貼れます．
+            キャラクター全員を並べたカードは，キャラクター一覧から作れます．
+          </p>
+          <BadgePanel
+            kind="character"
+            characterId={character.id}
+            token={badgeToken}
+            origin={origin}
+          />
+        </section>
       </div>
     </main>
     </EquipmentStateProvider>
