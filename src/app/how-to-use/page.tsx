@@ -20,6 +20,13 @@ export default function HowToUsePage() {
 
         <footer className="mt-16 text-center text-sm text-slate-600">
           <PendingLink
+            href="/terms"
+            className="text-slate-400 underline-offset-2 hover:text-white hover:underline"
+          >
+            利用規約
+          </PendingLink>
+          <span className="mx-3" aria-hidden="true">｜</span>
+          <PendingLink
             href="/privacy"
             className="text-slate-400 underline-offset-2 hover:text-white hover:underline"
           >
