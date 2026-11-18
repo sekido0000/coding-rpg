@@ -46,8 +46,8 @@ export function QuestPanel({
         className="relative flex items-center gap-1.5 rounded-xl border border-white/10 bg-white/5 px-3 py-1.5 text-sm font-semibold text-slate-200 transition hover:border-white/25 hover:bg-white/10"
       >
         <span aria-hidden="true">📜</span>
-        <span className="hidden sm:inline">クエスト</span>
-        <span className="sr-only sm:hidden">クエスト</span>
+        <span className="hidden xl:inline">クエスト</span>
+        <span className="sr-only xl:hidden">クエスト</span>
 
         {hasPendingRewards && (
           <span
