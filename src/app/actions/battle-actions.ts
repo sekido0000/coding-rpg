@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { after } from "next/server";
 
 import { getCharacters } from "@/data/characters";
 import { getOwnedGear } from "@/data/gear";
@@ -16,6 +17,7 @@ import { MAX_PARTY_SIZE, fillWithHelpers } from "@/lib/battle/party";
 import { getEquippedGear } from "@/lib/battle/owned-gear";
 import { simulateBattle, type BattleResult } from "@/lib/battle/simulate";
 import { getWeekStart } from "@/lib/quests/weekly";
+import { recordUsage } from "@/lib/analytics/record";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
@@ -125,6 +127,9 @@ export async function challengeBossAction(
     members,
     seed: crypto.getRandomValues(new Uint32Array(1))[0],
   });
+
+  // アプリの改善のための記録（挑んだ回数）
+  after(() => recordUsage(user.id, "battle_challenge"));
 
   if (!result.isWin) {
     return { ok: true, bossId, star, result, reward: null };

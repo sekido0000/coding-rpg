@@ -639,6 +639,23 @@ function getSizeXp(changedLines: number | null) {
   );
 }
 
+/*
+ * メッセージだけを見た判定（変更したファイルは見ない）．
+ * 使い始める前のコミットの姿（比べる元）を，コミットの一覧だけから計算する時に使う．
+ * 判定のしかたは calculateCommitXp と同じ．
+ */
+export function analyzeCommitMessage(message: string) {
+  const subject = getSubject(message);
+
+  return {
+    isVague: isVagueDescription(analyzeSubject(subject).description),
+    hasBody: hasBody(message),
+    isMerge: /^merge (pull request|branch|remote-tracking)/.test(
+      normalize(subject),
+    ),
+  };
+}
+
 /* ---------- 経験値の計算 ---------- */
 
 export function calculateCommitXp({

@@ -69,6 +69,10 @@ export function HeaderMenu() {
             <span aria-hidden="true">❔</span>
             使い方
           </PendingLink>
+          <PendingLink href="/settings" className={itemClass}>
+            <span aria-hidden="true">⚙️</span>
+            設定
+          </PendingLink>
           <button
             type="button"
             role="menuitem"
