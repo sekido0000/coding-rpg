@@ -76,7 +76,7 @@ export async function updateSession(
   const claims = data?.claims;
 
   /*
-   * トップページ・使い方・プライバシーポリシーはログイン前でも見られるようにする．
+   * トップページ・使い方・利用規約・プライバシーポリシーはログイン前でも見られるようにする．
    * データを全部消した後の案内も，ログアウトした状態で見せる．
    * トップページはログイン状態に応じて表示を切り替える．
    */
@@ -84,6 +84,7 @@ export async function updateSession(
     request.nextUrl.pathname === "/" ||
     request.nextUrl.pathname === "/how-to-use" ||
     request.nextUrl.pathname === "/privacy" ||
+    request.nextUrl.pathname === "/terms" ||
     request.nextUrl.pathname === "/account/deleted" ||
     request.nextUrl.pathname.startsWith(
       "/login",
