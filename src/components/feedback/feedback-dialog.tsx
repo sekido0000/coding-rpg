@@ -1,7 +1,7 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { useActionState, useRef, useState } from "react";
+import { useActionState, useEffect, useRef, useState } from "react";
 import { useFormStatus } from "react-dom";
 
 import {
@@ -19,6 +19,13 @@ const ISSUES_URL = "https://github.com/sekido0000/coding-rpg/issues";
 
 const INITIAL_STATE: FeedbackState = { status: "idle", message: "" };
 
+// 上の帯のメニューなどから，ご意見のフォームを開く時に送る合図
+const OPEN_FEEDBACK_EVENT = "coding-rpg:open-feedback";
+
+export function openFeedback() {
+  window.dispatchEvent(new Event(OPEN_FEEDBACK_EVENT));
+}
+
 function SubmitButton() {
   const { pending } = useFormStatus();
 
@@ -35,11 +42,22 @@ function SubmitButton() {
 }
 
 /*
- * ご意見を送るボタンとフォーム．
+ * ご意見を送るフォーム．openFeedback() で開く．
+ * メニューを閉じてもフォームが消えないよう，ページに1つだけ置いておく．
  * 送った時に開いていたページも一緒に送り，何の話か分かるようにする．
  */
-export function FeedbackButton() {
+export function FeedbackDialog() {
   const dialogRef = useRef<HTMLDialogElement>(null);
+
+  useEffect(() => {
+    const open = () => dialogRef.current?.showModal();
+
+    window.addEventListener(OPEN_FEEDBACK_EVENT, open);
+
+    return () => {
+      window.removeEventListener(OPEN_FEEDBACK_EVENT, open);
+    };
+  }, []);
   const pathname = usePathname();
   // 送れたらフォームを空にする（key を変えて作り直す）
   const [formKey, setFormKey] = useState(0);
@@ -59,17 +77,6 @@ export function FeedbackButton() {
   );
 
   return (
-    <>
-      <button
-        type="button"
-        onClick={() => dialogRef.current?.showModal()}
-        className="flex items-center gap-1.5 rounded-xl border border-white/10 bg-white/5 px-3 py-1.5 text-sm font-semibold text-slate-200 transition hover:border-white/25 hover:bg-white/10"
-      >
-        <span aria-hidden="true">💬</span>
-        <span className="hidden sm:inline">ご意見</span>
-        <span className="sr-only sm:hidden">ご意見</span>
-      </button>
-
       <dialog
         ref={dialogRef}
         aria-labelledby="feedback-title"
@@ -169,6 +176,5 @@ export function FeedbackButton() {
           でも受け付けています（誰でも見られる場所です）．
         </p>
       </dialog>
-    </>
   );
 }
