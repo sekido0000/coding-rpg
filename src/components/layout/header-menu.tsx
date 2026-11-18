@@ -11,7 +11,7 @@ const itemClass =
   "flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-semibold text-slate-200 transition hover:bg-white/10";
 
 /*
- * 上の帯の「その他」．ゲームで毎日使うもの以外（称号・使い方・ご意見・ログアウト）をまとめる．
+ * 上の帯の「その他」．ゲームで毎日使うもの以外（称号・使い方・ご意見・ログアウト・データの削除）をまとめる．
  * 帯が2行にならないよう，ここに入れる．外側を押すか Esc で閉じる．
  */
 export function HeaderMenu() {
@@ -85,6 +85,12 @@ export function HeaderMenu() {
           <form action={signOutAction}>
             <SignOutButton />
           </form>
+          <PendingLink
+            href="/account/delete"
+            className="block rounded-lg px-3 py-2 text-xs text-slate-500 transition hover:bg-white/10 hover:text-red-300"
+          >
+            データを全部消す
+          </PendingLink>
         </div>
       )}
     </div>
