@@ -13,6 +13,7 @@ import { getPlacements } from "@/data/buildings";
 import { signOutAction } from "@/app/actions/auth-actions";
 import { createClient } from "@/lib/supabase/server";
 import { SignOutButton } from "@/components/auth/sign-out-button";
+import { FeedbackButton } from "@/components/feedback/feedback-button";
 import { PendingLink } from "@/components/ui/pending-link";
 import Image from "next/image";
 import Link from "next/link";
@@ -139,6 +140,7 @@ export default async function Home() {
           <HudLink href="/shop" icon="🏪" label="雑貨店" />
           <HudLink href="/titles" icon="🏅" label="称号" />
           <HudLink href="/how-to-use" icon="❔" label="使い方" />
+          <FeedbackButton />
 
           <form action={signOutAction}>
             <SignOutButton />
