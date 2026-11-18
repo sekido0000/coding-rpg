@@ -11,7 +11,7 @@ const itemClass =
   "flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-semibold text-slate-200 transition hover:bg-white/10";
 
 /*
- * 上の帯の「メニュー」．ゲームで毎日使うもの以外（称号・使い方・ご意見・ログアウト）をまとめる．
+ * 上の帯の「その他」．ゲームで毎日使うもの以外（称号・使い方・ご意見・ログアウト）をまとめる．
  * 帯が2行にならないよう，ここに入れる．外側を押すか Esc で閉じる．
  */
 export function HeaderMenu() {
@@ -50,11 +50,10 @@ export function HeaderMenu() {
         onClick={() => setIsOpen((value) => !value)}
         aria-expanded={isOpen}
         aria-haspopup="menu"
-        className="flex items-center gap-1.5 rounded-xl border border-white/10 bg-white/5 px-3 py-1.5 text-sm font-semibold text-slate-200 transition hover:border-white/25 hover:bg-white/10"
+        className="flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-xl border border-white/10 bg-white/5 px-3 py-1.5 text-sm font-semibold text-slate-200 transition hover:border-white/25 hover:bg-white/10"
       >
         <span aria-hidden="true">☰</span>
-        <span className="hidden xl:inline">メニュー</span>
-        <span className="sr-only xl:hidden">メニュー</span>
+        その他
       </button>
 
       {isOpen && (
