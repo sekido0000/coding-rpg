@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, type ReactNode } from "react";
 
+import { recordClientUsageAction } from "@/app/actions/analytics-actions";
 import { TAB_CLASS } from "@/components/layout/tab-class";
 
 // ワールドの掲示板などから，クエストのパネルを開く時に送る合図
@@ -29,9 +30,18 @@ export function QuestPanel({
 }: QuestPanelProps) {
   const dialogRef = useRef<HTMLDialogElement>(null);
 
+  // 開く．アプリの改善のため，開いた回数を数える
+  const openPanel = () => {
+    dialogRef.current?.showModal();
+    void recordClientUsageAction("quest_open");
+  };
+
   // ワールドの掲示板を押した時にも開く
   useEffect(() => {
-    const open = () => dialogRef.current?.showModal();
+    const open = () => {
+      dialogRef.current?.showModal();
+      void recordClientUsageAction("quest_open");
+    };
 
     window.addEventListener(OPEN_QUEST_PANEL_EVENT, open);
 
@@ -44,7 +54,7 @@ export function QuestPanel({
     <>
       <button
         type="button"
-        onClick={() => dialogRef.current?.showModal()}
+        onClick={openPanel}
         // 上の帯のタブと同じ見た目にする
         className={TAB_CLASS}
       >

@@ -1,6 +1,7 @@
 "use server";
 
 import { refresh, revalidatePath } from "next/cache";
+import { after } from "next/server";
 
 import {
   GEAR_CATALOG,
@@ -8,6 +9,7 @@ import {
   isGearId,
   isGearSlot,
 } from "@/lib/battle/gear";
+import { recordUsage } from "@/lib/analytics/record";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
@@ -155,6 +157,9 @@ export async function equipGearAction(
     console.error("Failed to equip gear:", error ?? data);
     return { ok: false, message: "付けられませんでした" };
   }
+
+  // アプリの改善のための記録（付け替えた回数）
+  after(() => recordUsage(userId, "decoration_change"));
 
   revalidatePath("/repositories", "layout");
 
