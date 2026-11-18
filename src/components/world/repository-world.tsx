@@ -129,7 +129,7 @@ type OpenBuilding =
  * - move：移す先の空いた区画を選んでいる
  */
 type BuildAction =
-  | { kind: "build"; row: 0 | 1; offset: number }
+  | { kind: "build"; row: number; offset: number }
   | { kind: "manage"; key: LotKey }
   | { kind: "move"; key: LotKey };
 
@@ -613,7 +613,7 @@ export function RepositoryWorld({
 
               return {
                 key: key as LotKey,
-                row: Number(row) as 0 | 1,
+                row: Number(row),
                 offset: Number(offset),
               };
             })
@@ -1266,7 +1266,7 @@ export function RepositoryWorld({
                   left: x - ROAD_WIDTH / 2,
                   width: ROAD_WIDTH,
                   top: map.roadYs[0],
-                  height: map.roadYs[1] - map.roadYs[0],
+                  height: map.roadYs[map.roadYs.length - 1] - map.roadYs[0],
                 }}
               />
             ))}

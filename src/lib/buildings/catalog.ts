@@ -150,8 +150,8 @@ export function isLotKey(value: unknown): value is LotKey {
 // 建物の場所
 export type Placement = {
   key: LotKey;
-  // 何列目か（0：奥，1：手前）
-  row: 0 | 1;
+  // 何列目か（掲示板の列が 0．上はマイナス，下はプラス）
+  row: number;
   // 真ん中（掲示板）の区画から何区画ずれているか．ワールドが広がっても場所が変わらないようにする
   offset: number;
 };
