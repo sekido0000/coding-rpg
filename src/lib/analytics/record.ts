@@ -176,3 +176,47 @@ export async function ensureCommitBaselines(userId: string) {
     console.error("Failed to compute commit baselines:", error);
   }
 }
+
+export type BattleResultRecord = {
+  bossId: string;
+  star: number;
+  isWin: boolean;
+  isTimeout: boolean;
+  rounds: number;
+  // キャラクターの種類・レベル・役割・助っ人かどうか・付けている装備の数だけ
+  party: {
+    characterType: string;
+    level: number;
+    role: string;
+    isHelper: boolean;
+    gearCount: number;
+  }[];
+};
+
+// ボス戦の結果を残す（ボスや★ごとの勝率を見て，難しさを調整するため）
+export async function recordBattleResult(
+  userId: string,
+  record: BattleResultRecord,
+) {
+  try {
+    if (await isAnalyticsOptedOut(userId)) {
+      return;
+    }
+
+    const { error } = await createAdminClient().from("battle_results").insert({
+      user_id: userId,
+      boss_id: record.bossId,
+      star: record.star,
+      is_win: record.isWin,
+      is_timeout: record.isTimeout,
+      rounds: record.rounds,
+      party: record.party,
+    });
+
+    if (error) {
+      console.error("Failed to record battle result:", error);
+    }
+  } catch (error) {
+    console.error("Failed to record battle result:", error);
+  }
+}

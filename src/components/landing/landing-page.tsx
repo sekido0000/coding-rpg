@@ -3,6 +3,29 @@ import { GuideSections } from "@/components/guide/guide-sections";
 import { AppLogo } from "@/components/layout/app-logo";
 import { PendingLink } from "@/components/ui/pending-link";
 
+// ログインすると利用規約とプライバシーポリシーに同意したことになる，という表示
+function ConsentNote({ className }: { className: string }) {
+  return (
+    <p className={`text-[11px] leading-4 text-slate-500 ${className}`}>
+      ログインすると，
+      <PendingLink
+        href="/terms"
+        className="text-slate-300 underline underline-offset-2 hover:text-white"
+      >
+        利用規約
+      </PendingLink>
+      と
+      <PendingLink
+        href="/privacy"
+        className="text-slate-300 underline underline-offset-2 hover:text-white"
+      >
+        プライバシーポリシー
+      </PendingLink>
+      に同意したものとみなします
+    </p>
+  );
+}
+
 const features = [
   {
     icon: "⚡",
@@ -35,26 +58,17 @@ export function LandingPage() {
         <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-between gap-x-4 gap-y-1 px-6 py-3">
           <AppLogo />
 
-          {/* ログインの前に，利用規約とプライバシーポリシーに同意することを示す */}
-          <GitHubLoginButton compact />
+          {/*
+           * ログインの前に，利用規約とプライバシーポリシーに同意することを示す．
+           * 広い画面ではボタンの下にまとめ，ロゴが帯の高さの真ん中に来るようにする．
+           * スマホでは横に収まらないので，帯の下の段に出す．
+           */}
+          <div className="flex flex-col items-end gap-1">
+            <GitHubLoginButton compact />
+            <ConsentNote className="hidden text-right sm:block" />
+          </div>
 
-          <p className="w-full text-right text-[11px] leading-4 text-slate-500">
-            ログインすると，
-            <PendingLink
-              href="/terms"
-              className="text-slate-300 underline underline-offset-2 hover:text-white"
-            >
-              利用規約
-            </PendingLink>
-            と
-            <PendingLink
-              href="/privacy"
-              className="text-slate-300 underline underline-offset-2 hover:text-white"
-            >
-              プライバシーポリシー
-            </PendingLink>
-            に同意したものとみなします
-          </p>
+          <ConsentNote className="w-full text-right sm:hidden" />
         </div>
       </header>
 
