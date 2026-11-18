@@ -1,9 +1,12 @@
+import { BadgePanel } from "@/components/badges/badge-panel";
 import { CharacterList } from "@/components/characters/character-list";
 import { AppLogo } from "@/components/layout/app-logo";
 import { PendingLink } from "@/components/ui/pending-link";
 import { RedirectLink } from "@/components/ui/redirect-link";
 import { getCharacters } from "@/data/characters";
 import { getRepositoriesAwaitingCharacter } from "@/data/repositories";
+import { getRequestOrigin } from "@/lib/site";
+import { createClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
 
@@ -12,9 +15,13 @@ export const dynamic = "force-dynamic";
  * リポジトリの追加・連携解除をしたりする．
  */
 export default async function CharactersPage() {
-  const [characters, pendingRepositories] = await Promise.all([
+  const supabase = await createClient();
+  const [characters, pendingRepositories, profile, origin] = await Promise.all([
     getCharacters(),
     getRepositoriesAwaitingCharacter(),
+    // RLS で本人の行だけが返る
+    supabase.from("user_profiles").select("party_badge_token").maybeSingle(),
+    getRequestOrigin(),
   ]);
 
   /*
@@ -63,6 +70,26 @@ export default async function CharactersPage() {
           characters={characters}
           pendingRepositories={pendingRepositories}
         />
+
+        {/* パーティーのカード（GitHub のプロフィールや個人のサイトに貼る画像） */}
+        {characters.length > 0 && (
+          <section
+            aria-labelledby="party-badge"
+            className="mt-12 rounded-3xl border border-slate-800 bg-slate-900/60 p-6"
+          >
+            <h2 id="party-badge" className="text-xl font-black text-white">
+              🪪 パーティーのカード
+            </h2>
+            <p className="mb-4 mt-2 text-sm leading-6 text-slate-400">
+              育てているキャラクターを並べた画像です．GitHub のプロフィール（自分のユーザー名と同じ名前のリポジトリの README）や，個人のサイトに貼れます．
+            </p>
+            <BadgePanel
+              kind="party"
+              token={profile.data?.party_badge_token ?? null}
+              origin={origin}
+            />
+          </section>
+        )}
       </div>
     </main>
   );

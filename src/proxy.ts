@@ -3,8 +3,11 @@ import { NextResponse, type NextRequest } from "next/server";
 import { updateSession } from "@/lib/supabase/proxy";
 
 export async function proxy(request: NextRequest) {
-  // GitHub Webhookは認証を通さない
-  if (request.nextUrl.pathname === "/api/github/webhook") {
+  // GitHub Webhook と，誰でも見られるバッジの画像は認証を通さない
+  if (
+    request.nextUrl.pathname === "/api/github/webhook" ||
+    request.nextUrl.pathname.startsWith("/api/badge/")
+  ) {
     return NextResponse.next();
   }
 
