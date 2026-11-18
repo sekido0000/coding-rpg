@@ -98,7 +98,7 @@ function hashToUnits(text: string): [number, number] {
 /*
  * ワールドを開いた時に，キャラクターが最初に立つ場所．
  * 全員が自分の家の前に並ぶと不自然なので，歩く範囲の道の上にばらけさせる．
- * キャラクターの順番で横に均等に分け，その中で少しずらす．奥と手前のどちらの道かも散らす．
+ * キャラクターの順番で横に均等に分け，その中で少しずらす．どの道に立つかも散らす．
  * サーバーとブラウザで同じ画面になるよう，乱数は使わずキャラクターの ID から決める．
  */
 export function getStartPosition(
@@ -113,7 +113,7 @@ export function getStartPosition(
 
   return {
     x: Math.round(map.walkMinX + (map.walkMaxX - map.walkMinX) * rate),
-    y: map.roadYs[side < 0.5 ? 0 : 1],
+    y: map.roadYs[Math.min(Math.floor(side * map.roadYs.length), map.roadYs.length - 1)],
   };
 }
 

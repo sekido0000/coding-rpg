@@ -103,7 +103,8 @@ async function freezeLayout(
  */
 async function canBuildAt(userId: string, row: number, offset: number) {
   if (
-    (row !== 0 && row !== 1) ||
+    !Number.isInteger(row) ||
+    Math.abs(row) > 20 ||
     !Number.isInteger(offset) ||
     Math.abs(offset) > 100
   ) {
