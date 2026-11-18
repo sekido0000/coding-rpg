@@ -69,6 +69,10 @@ export function HeaderMenu() {
             <span aria-hidden="true">❔</span>
             使い方
           </PendingLink>
+          <PendingLink href="/settings" className={itemClass}>
+            <span aria-hidden="true">⚙️</span>
+            設定
+          </PendingLink>
           <button
             type="button"
             role="menuitem"
@@ -85,6 +89,12 @@ export function HeaderMenu() {
           <form action={signOutAction}>
             <SignOutButton />
           </form>
+          <PendingLink
+            href="/terms"
+            className="block rounded-lg px-3 py-2 text-xs text-slate-500 transition hover:bg-white/10 hover:text-white"
+          >
+            利用規約
+          </PendingLink>
           <PendingLink
             href="/privacy"
             className="block rounded-lg px-3 py-2 text-xs text-slate-500 transition hover:bg-white/10 hover:text-white"

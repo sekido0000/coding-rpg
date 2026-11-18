@@ -1,6 +1,7 @@
 "use server";
 
 import { refresh, revalidatePath } from "next/cache";
+import { after } from "next/server";
 
 import { getPlacements } from "@/data/buildings";
 import { getCharacters } from "@/data/characters";
@@ -13,6 +14,7 @@ import {
   type Placement,
   isBuildingId,
 } from "@/lib/buildings/catalog";
+import { recordUsage } from "@/lib/analytics/record";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import {
@@ -175,6 +177,8 @@ export async function purchaseBuildingAction(
     return { ok: false, message: "ここには建てられません" };
   }
 
+  after(() => recordUsage(userId, "building_edit"));
+
   return done(`${building.name}を建てました！`);
 }
 
@@ -224,6 +228,8 @@ export async function moveBuildingAction(
     console.error("Failed to move building:", error ?? data);
     return { ok: false, message: "移せませんでした" };
   }
+
+  after(() => recordUsage(userId, "building_edit"));
 
   return done(`${getLotName(key, characters)}を移しました`);
 }

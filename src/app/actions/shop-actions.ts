@@ -1,7 +1,9 @@
 "use server";
 
 import { refresh, revalidatePath } from "next/cache";
+import { after } from "next/server";
 
+import { recordUsage } from "@/lib/analytics/record";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import {
@@ -132,6 +134,9 @@ export async function equipItemAction(
   if (error) {
     throw new Error(`装飾を付けられませんでした: ${error.message}`);
   }
+
+  // アプリの改善のための記録（付け替えた回数）
+  after(() => recordUsage(userId, "decoration_change"));
 
   revalidatePath(`/repositories/${repositoryId}`);
   revalidatePath("/");

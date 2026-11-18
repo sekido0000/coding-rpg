@@ -32,10 +32,29 @@ export function LandingPage() {
   return (
     <main className="flex min-h-screen flex-col bg-slate-950">
       <header className="sticky top-0 z-20 border-b border-slate-800 bg-slate-950/90 backdrop-blur">
-        <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-4 px-6 py-3">
+        <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-between gap-x-4 gap-y-1 px-6 py-3">
           <AppLogo />
 
+          {/* ログインの前に，利用規約とプライバシーポリシーに同意することを示す */}
           <GitHubLoginButton compact />
+
+          <p className="w-full text-right text-[11px] leading-4 text-slate-500">
+            ログインすると，
+            <PendingLink
+              href="/terms"
+              className="text-slate-300 underline underline-offset-2 hover:text-white"
+            >
+              利用規約
+            </PendingLink>
+            と
+            <PendingLink
+              href="/privacy"
+              className="text-slate-300 underline underline-offset-2 hover:text-white"
+            >
+              プライバシーポリシー
+            </PendingLink>
+            に同意したものとみなします
+          </p>
         </div>
       </header>
 
@@ -109,6 +128,13 @@ export function LandingPage() {
         <GuideSections />
 
         <footer className="mt-auto border-t border-slate-800 pb-2 pt-10 text-center text-sm text-slate-600">
+          <PendingLink
+            href="/terms"
+            className="text-slate-400 underline-offset-2 hover:text-white hover:underline"
+          >
+            利用規約
+          </PendingLink>
+          <span className="mx-3" aria-hidden="true">｜</span>
           <PendingLink
             href="/privacy"
             className="text-slate-400 underline-offset-2 hover:text-white hover:underline"

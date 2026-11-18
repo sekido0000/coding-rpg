@@ -1,7 +1,11 @@
+import { after } from "next/server";
+
 import { AppLogo } from "@/components/layout/app-logo";
 import { ShopItemList } from "@/components/shop/shop-item-list";
 import { PendingLink } from "@/components/ui/pending-link";
 import { getInventory } from "@/data/inventory";
+import { recordUsage } from "@/lib/analytics/record";
+import { createClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
 
@@ -12,6 +16,17 @@ export const dynamic = "force-dynamic";
  */
 export default async function ShopPage() {
   const inventory = await getInventory();
+
+  // アプリの改善のための記録（雑貨店を開いた回数）
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (user) {
+    const userId = user.id;
+    after(() => recordUsage(userId, "shop_open"));
+  }
 
   return (
     <main className="min-h-screen bg-slate-950 px-6 py-8">

@@ -76,6 +76,7 @@ import {
   purchaseBuildingAction,
   type BuildingActionResult,
 } from "@/app/actions/building-actions";
+import { recordClientUsageAction } from "@/app/actions/analytics-actions";
 import { BuildingInterior } from "@/components/world/building-interiors";
 import { BuildMenu, ManageLot } from "@/components/world/build-menus";
 import {
@@ -1308,7 +1309,11 @@ export function RepositoryWorld({
                     dropTarget.offset === lot.offset
                   }
                   isDragged={!!dragging && dragging.key === lot.key}
-                  onOpen={setOpenBuilding}
+                  onOpen={(building) => {
+                    setOpenBuilding(building);
+                    // アプリの改善のための記録（建物の中をのぞいた回数）
+                    void recordClientUsageAction("building_peek");
+                  }}
                   onBuildAction={handleBuildAction}
                   onDragStart={handleDragStart}
                 />

@@ -1,3 +1,5 @@
+import { after } from "next/server";
+
 import { LandingPage } from "@/components/landing/landing-page";
 import { getCharacters } from "@/data/characters";
 import { getRepositoriesAwaitingCharacter } from "@/data/repositories";
@@ -8,6 +10,7 @@ import { WorldHome } from "@/components/world/world-home";
 import { getSelectedTitle } from "@/data/titles";
 import { getInventory } from "@/data/inventory";
 import { getPlacements } from "@/data/buildings";
+import { ensureCommitBaselines } from "@/lib/analytics/record";
 import { createClient } from "@/lib/supabase/server";
 import { PendingLink } from "@/components/ui/pending-link";
 
@@ -28,6 +31,10 @@ export default async function Home() {
     // ログイン前はアプリの紹介と使い方を表示する
     return <LandingPage />;
   }
+
+  // アプリの改善のための記録：まだ比べる元がないリポジトリの分を，表示の後に少しずつ計算する
+  const userId = user.id;
+  after(() => ensureCommitBaselines(userId));
 
   const [
     characters,

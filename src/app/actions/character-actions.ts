@@ -2,7 +2,9 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { after } from "next/server";
 
+import { ensureCommitBaselines } from "@/lib/analytics/record";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import {
@@ -176,6 +178,10 @@ export async function createCharacterAction(
   } catch (titleError) {
     console.error("Failed to grant titles:", titleError);
   }
+
+  // アプリの改善のための記録：使い始める前のコミットの姿（比べる元）を，返事の後に計算する
+  const userId = user.id;
+  after(() => ensureCommitBaselines(userId));
 
   revalidatePath("/");
   revalidatePath("/characters");

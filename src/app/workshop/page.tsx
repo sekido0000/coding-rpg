@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { after } from "next/server";
 
 import { AppLogo } from "@/components/layout/app-logo";
 import { PendingLink } from "@/components/ui/pending-link";
@@ -7,6 +8,7 @@ import { getBattleStatus } from "@/data/battle";
 import { getCharacters } from "@/data/characters";
 import { getOwnedGear } from "@/data/gear";
 import { getInventory } from "@/data/inventory";
+import { recordUsage } from "@/lib/analytics/record";
 import { createClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
@@ -23,6 +25,10 @@ export default async function WorkshopPage() {
   if (!user) {
     redirect("/");
   }
+
+  // アプリの改善のための記録（工房を開いた回数）
+  const userId = user.id;
+  after(() => recordUsage(userId, "workshop_open"));
 
   const characters = await getCharacters();
   const [owned, status, inventory] = await Promise.all([
