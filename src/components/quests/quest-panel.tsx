@@ -2,6 +2,8 @@
 
 import { useEffect, useRef, type ReactNode } from "react";
 
+import { TAB_CLASS } from "@/components/layout/tab-class";
+
 // ワールドの掲示板などから，クエストのパネルを開く時に送る合図
 export const OPEN_QUEST_PANEL_EVENT = "coding-rpg:open-quests";
 
@@ -43,15 +45,16 @@ export function QuestPanel({
       <button
         type="button"
         onClick={() => dialogRef.current?.showModal()}
-        className="relative flex items-center gap-1.5 rounded-xl border border-white/10 bg-white/5 px-3 py-1.5 text-sm font-semibold text-slate-200 transition hover:border-white/25 hover:bg-white/10"
+        // 上の帯のタブと同じ見た目にする
+        className={TAB_CLASS}
       >
         <span aria-hidden="true">📜</span>
-        <span className="hidden xl:inline">クエスト</span>
-        <span className="sr-only xl:hidden">クエスト</span>
+        クエスト
 
+        {/* 受け取り待ちの報酬がある時の印（タブは横にスクロールするので，はみ出さないよう文字の横に置く） */}
         {hasPendingRewards && (
           <span
-            className="absolute -right-1.5 -top-1.5 grid h-4 w-4 place-items-center rounded-full bg-red-500 text-[10px] font-black text-white"
+            className="grid h-4 w-4 place-items-center rounded-full bg-red-500 text-[10px] font-black text-white"
             aria-label="受け取り待ちの報酬があります"
           >
             !

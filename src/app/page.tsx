@@ -84,8 +84,11 @@ export default async function Home() {
         </div>
       )}
 
-      {/* ワールド（残りの高さいっぱい） */}
-      <div className="relative min-h-0 flex-1">
+      {/*
+       * ワールド（残りの高さいっぱい）．
+       * isolate で重なりの範囲をワールドの中に閉じ込め，ワールドのボタンが上の帯のメニューより前に出ないようにする．
+       */}
+      <div className="relative isolate min-h-0 flex-1">
         <WorldHome
           key={worldKey}
           characters={characters}
