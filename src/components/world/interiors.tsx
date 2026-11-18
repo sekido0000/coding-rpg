@@ -223,6 +223,8 @@ type HouseInteriorProps = {
   guests: Character[];
   // 家に入るたびに変わる数．最初にいる場所を決めるのに使う
   seed: number;
+  // キャラクターの詳細画面への入口を出すか（見本のワールドでは出さない）
+  showStatusLink?: boolean;
 };
 
 // 遊びに来たキャラクターが立つ場所（じゅうたんのあたり）
@@ -250,6 +252,7 @@ export function HouseInterior({
   isHome,
   guests,
   seed,
+  showStatusLink = true,
 }: HouseInteriorProps) {
   const evolution = getCharacterEvolution(
     character.characterType,
@@ -465,12 +468,14 @@ export function HouseInterior({
         )}
 
         {/* キャラクターの詳細画面への入口は，部屋の右下に置く（部屋の下に何も残さない） */}
-        <PendingLink
-          href={`/repositories/${character.repositoryId}`}
-          className="absolute bottom-2 right-2 rounded-lg border border-emerald-300/50 bg-slate-950/80 px-2.5 py-1 text-xs font-semibold text-emerald-200 transition hover:bg-slate-900 sm:bottom-3 sm:right-3 sm:text-sm"
-        >
-          📊 {character.name}のステータス →
-        </PendingLink>
+        {showStatusLink && (
+          <PendingLink
+            href={`/repositories/${character.repositoryId}`}
+            className="absolute bottom-2 right-2 rounded-lg border border-emerald-300/50 bg-slate-950/80 px-2.5 py-1 text-xs font-semibold text-emerald-200 transition hover:bg-slate-900 sm:bottom-3 sm:right-3 sm:text-sm"
+          >
+            📊 {character.name}のステータス →
+          </PendingLink>
+        )}
       </Room>
     </div>
   );
