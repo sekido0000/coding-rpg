@@ -1,5 +1,8 @@
 import "server-only";
 
+import { readFile } from "node:fs/promises";
+import path from "node:path";
+
 import { extractSpriteBody, type BadgeMember } from "@/lib/badges/render";
 import {
   getCharacterEvolution,
@@ -7,22 +10,43 @@ import {
 } from "@/lib/characters/catalog";
 import { createAdminClient } from "@/lib/supabase/admin";
 
+// 一覧（catalog）にあるキャラクターの絵の場所の形
+const SPRITE_PATH = /^\/characters\/[a-z_]+\/level-[1-5]\.svg$/;
+
+// 埋め込んでよい SVG か（SVG で始まり，スクリプトや HTML を含まない）
+function isSafeSprite(file: string) {
+  return (
+    file.trimStart().startsWith("<svg") &&
+    !/<script|<html|<foreignObject|javascript:/i.test(file)
+  );
+}
+
 /*
- * キャラクターのドット絵を，配信している SVG から読む．
+ * キャラクターのドット絵を，public/characters の SVG ファイルから読む．
+ *
+ * 自分のサイトに HTTP で取りに行くと，プレビュー環境ではログイン画面が返ってきて絵が壊れるため，ファイルから読む．
+ * ファイルは next.config.ts の outputFileTracingIncludes で，サーバーの関数に含めている．
  * 一度読んだものは覚えておく（絵はデプロイし直すまで変わらない）．
  */
 const spriteCache = new Map<string, string>();
 
-async function loadSprite(origin: string, imagePath: string) {
+async function loadSprite(imagePath: string) {
   const cached = spriteCache.get(imagePath);
 
   if (cached !== undefined) {
     return cached;
   }
 
+  if (!SPRITE_PATH.test(imagePath)) {
+    return "";
+  }
+
   try {
-    const response = await fetch(new URL(imagePath, origin));
-    const body = response.ok ? extractSpriteBody(await response.text()) : "";
+    const file = await readFile(
+      path.join(process.cwd(), "public", imagePath),
+      "utf8",
+    );
+    const body = isSafeSprite(file) ? extractSpriteBody(file) : "";
 
     if (body) {
       spriteCache.set(imagePath, body);
@@ -40,10 +64,7 @@ type CharacterRow = {
   level: number;
 };
 
-async function toMember(
-  origin: string,
-  row: CharacterRow,
-): Promise<BadgeMember | null> {
+async function toMember(row: CharacterRow): Promise<BadgeMember | null> {
   if (!isCharacterType(row.character_type)) {
     return null;
   }
@@ -53,15 +74,15 @@ async function toMember(
   return {
     level: row.level,
     evolutionName: evolution.name,
-    sprite: await loadSprite(origin, evolution.imagePath),
+    sprite: await loadSprite(evolution.imagePath),
   };
 }
 
 /*
  * パーティーのカードに出すキャラクター（連携中のリポジトリのキャラクター全員）．
- * token が見つからない（止めた・作り直した）時は null．
+ * 文字列が見つからない（止めた・作り直した）時は null．
  */
-export async function getPartyBadgeMembers(origin: string, token: string) {
+export async function getPartyBadgeMembers(token: string) {
   const admin = createAdminClient();
   const { data: profile, error } = await admin
     .from("user_profiles")
@@ -85,14 +106,14 @@ export async function getPartyBadgeMembers(origin: string, token: string) {
   }
 
   const members = await Promise.all(
-    (characters ?? []).map((row) => toMember(origin, row as CharacterRow)),
+    (characters ?? []).map((row) => toMember(row as CharacterRow)),
   );
 
   return members.filter((member): member is BadgeMember => member !== null);
 }
 
 // キャラクター1体のバッジに出すキャラクター．見つからない・連携を外した時は null
-export async function getCharacterBadgeMember(origin: string, token: string) {
+export async function getCharacterBadgeMember(token: string) {
   const { data, error } = await createAdminClient()
     .from("characters")
     .select("character_type, level, repositories!inner(is_active)")
@@ -104,5 +125,5 @@ export async function getCharacterBadgeMember(origin: string, token: string) {
     return null;
   }
 
-  return toMember(origin, data as CharacterRow);
+  return toMember(data as CharacterRow);
 }
