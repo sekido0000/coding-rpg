@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   getInitialWalker,
+  getStartPosition,
   stepWalker,
   type Walker,
   type WalkerContext,
@@ -125,5 +126,46 @@ describe("友だちの家へ遊びに行く", () => {
 
     expect(arrived.insideOf).toBe("house:b");
     expect(arrived.position).toEqual(friendDoor);
+  });
+});
+
+describe("最初に立つ場所", () => {
+  const ids = ["alpha", "bravo", "charlie", "delta", "echo"];
+  const wide = buildWorldMap(ids);
+
+  it("道の上の，歩く範囲の中に立つ", () => {
+    ids.forEach((id, index) => {
+      const position = getStartPosition(wide, id, index, ids.length);
+
+      expect(wide.roadYs).toContain(position.y);
+      expect(position.x).toBeGreaterThanOrEqual(wide.walkMinX);
+      expect(position.x).toBeLessThanOrEqual(wide.walkMaxX);
+    });
+  });
+
+  it("自分の家の前には並ばず，横にばらける", () => {
+    const xs = ids.map(
+      (id, index) => getStartPosition(wide, id, index, ids.length).x,
+    );
+    const doors = wide.lots
+      .filter((lot) => lot.kind === "house")
+      .map((lot) => lot.door);
+
+    expect(new Set(xs).size).toBe(ids.length);
+    expect(
+      ids.every((id, index) => {
+        const position = getStartPosition(wide, id, index, ids.length);
+
+        return doors.some(
+          (door) => door.x === position.x && door.y === position.y,
+        );
+      }),
+    ).toBe(false);
+  });
+
+  it("同じキャラクターなら毎回同じ場所（サーバーとブラウザでそろう）", () => {
+    expect(getStartPosition(wide, "alpha", 0, 5)).toEqual(
+      getStartPosition(wide, "alpha", 0, 5),
+    );
   });
 });

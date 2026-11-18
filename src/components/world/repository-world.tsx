@@ -5,7 +5,9 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
+  useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useOptimistic,
@@ -18,6 +20,7 @@ import {
 
 import { openQuestPanel } from "@/components/quests/quest-panel";
 import { Spinner } from "@/components/ui/spinner";
+import { RedirectLink } from "@/components/ui/redirect-link";
 import { EquipmentLayers } from "@/components/items/equipment-layers";
 import {
   FlowerBed,
@@ -77,6 +80,7 @@ import { BuildingInterior } from "@/components/world/building-interiors";
 import { BuildMenu, ManageLot } from "@/components/world/build-menus";
 import {
   getInitialWalker,
+  getStartPosition,
   stepWalker,
   type VisitTarget,
   type Walker,
@@ -143,6 +147,13 @@ const TICK_INTERVAL = 500;
 
 // 最初に歩き出すまでの時間の最大（全員が同時に動き出さないようにずらす）
 const FIRST_MOVE_DELAY = 3000;
+
+// 拡大・縮小の段階（1 が元の大きさ）
+const ZOOM_LEVELS = [0.5, 0.65, 0.8, 1, 1.25, 1.5];
+const DEFAULT_ZOOM_INDEX = 3;
+
+// Ctrl＋ホイール・ピンチで，この量だけ回したら1段階変える
+const ZOOM_WHEEL_STEP = 40;
 
 // キャラクターの重なり順の上限．押せるものや吹き出しは，これより手前に出す
 const FRONT_DEPTH = 5000;
@@ -632,6 +643,18 @@ export function RepositoryWorld({
     [map],
   );
 
+  // ワールドを開いた時に，キャラクターが最初に立つ場所（道の上にばらけさせる）
+  const startPositions = useMemo(() => {
+    const ids = characterIds.split(",").filter(Boolean);
+
+    return new Map(
+      ids.map((id, index) => [
+        id,
+        getStartPosition(map, id, index, ids.length),
+      ]),
+    );
+  }, [characterIds, map]);
+
   // 立ち寄れる建物の扉
   const visitTargets = useMemo(
     () =>
@@ -686,6 +709,76 @@ export function RepositoryWorld({
 
   useDragScroll(scrollRef);
 
+  // 拡大・縮小の段階
+  const [zoomIndex, setZoomIndex] = useState(DEFAULT_ZOOM_INDEX);
+  const zoom = ZOOM_LEVELS[zoomIndex];
+
+  /*
+   * 拡大・縮小しても，画面の真ん中に映っている場所がずれないようにする．
+   * 変える前に真ん中の位置（全体に対する割合）を覚えておき，変えた後に戻す．
+   */
+  const zoomAnchorRef = useRef<{ x: number; y: number } | null>(null);
+
+  const changeZoom = useCallback((step: number) => {
+    const element = scrollRef.current;
+
+    if (element) {
+      zoomAnchorRef.current = {
+        x: (element.scrollLeft + element.clientWidth / 2) / element.scrollWidth,
+        y: (element.scrollTop + element.clientHeight / 2) / element.scrollHeight,
+      };
+    }
+
+    setZoomIndex((index) =>
+      Math.min(Math.max(index + step, 0), ZOOM_LEVELS.length - 1),
+    );
+  }, []);
+
+  useLayoutEffect(() => {
+    const element = scrollRef.current;
+    const anchor = zoomAnchorRef.current;
+
+    if (!element || !anchor) {
+      return;
+    }
+
+    element.scrollLeft = anchor.x * element.scrollWidth - element.clientWidth / 2;
+    element.scrollTop = anchor.y * element.scrollHeight - element.clientHeight / 2;
+    zoomAnchorRef.current = null;
+  }, [zoom]);
+
+  /*
+   * Ctrl＋ホイールと，トラックパッドのピンチ（Ctrl＋ホイールとして届く）で拡大・縮小する．
+   * ピンチは細かい量が何度も届くので，ある程度たまったら1段階変える．
+   */
+  useEffect(() => {
+    const element = scrollRef.current;
+
+    if (!element) {
+      return;
+    }
+
+    let total = 0;
+
+    const onWheel = (event: WheelEvent) => {
+      if (!event.ctrlKey) {
+        return;
+      }
+
+      event.preventDefault();
+      total += event.deltaY;
+
+      if (Math.abs(total) >= ZOOM_WHEEL_STEP) {
+        changeZoom(total < 0 ? 1 : -1);
+        total = 0;
+      }
+    };
+
+    element.addEventListener("wheel", onWheel, { passive: false });
+
+    return () => element.removeEventListener("wheel", onWheel);
+  }, [changeZoom]);
+
   useEffect(() => {
     const element = scrollRef.current;
 
@@ -732,7 +825,7 @@ export function RepositoryWorld({
         // 初めての時は，少しずつずらして歩き出す
         if (!walker) {
           next[id] = {
-            ...getInitialWalker(door),
+            ...getInitialWalker(startPositions.get(id) ?? door),
             nextMoveAt: now + Math.random() * FIRST_MOVE_DELAY,
           };
           hasChanged = true;
@@ -800,7 +893,7 @@ export function RepositoryWorld({
     return () => {
       window.clearInterval(timer);
     };
-  }, [characterIds, doors, houseDoors, map, visitTargets, setBusy]);
+  }, [characterIds, doors, houseDoors, map, startPositions, visitTargets, setBusy]);
 
   // 建てた・移した・取り壊した時のお知らせを，しばらく出す
   const showBuildMessage = (message: string) => {
@@ -881,8 +974,9 @@ export function RepositoryWorld({
   const toMapPosition = (clientX: number, clientY: number) => {
     const rect = groundRef.current?.getBoundingClientRect();
 
+    // 拡大・縮小している分を戻して，地図の上の位置にする
     return rect
-      ? { x: clientX - rect.left, y: clientY - rect.top }
+      ? { x: (clientX - rect.left) / zoom, y: (clientY - rect.top) / zoom }
       : { x: 0, y: 0 };
   };
 
@@ -1032,13 +1126,23 @@ export function RepositoryWorld({
             ✕ 建築モードをやめる
           </button>
         ) : (
-          <button
-            type="button"
-            onClick={() => setIsBuildMode(true)}
-            className="rounded-xl bg-amber-300 px-3 py-1.5 text-sm font-bold text-slate-950 shadow-lg transition hover:bg-amber-200"
-          >
-            🔨 建てる
-          </button>
+          <div className="flex flex-wrap justify-end gap-2">
+            {/* キャラクターを増やす（GitHub でリポジトリを選ぶ） */}
+            <RedirectLink
+              href="/github/install"
+              pendingText="GitHubへ移動中..."
+              className="rounded-xl bg-emerald-400 px-3 py-1.5 text-sm font-bold text-slate-950 shadow-lg transition hover:bg-emerald-300"
+            >
+              ＋ リポジトリを連携
+            </RedirectLink>
+            <button
+              type="button"
+              onClick={() => setIsBuildMode(true)}
+              className="rounded-xl bg-amber-300 px-3 py-1.5 text-sm font-bold text-slate-950 shadow-lg transition hover:bg-amber-200"
+            >
+              🔨 建てる
+            </button>
+          </div>
         )}
 
         {isBuildMode && (
@@ -1058,6 +1162,36 @@ export function RepositoryWorld({
             移すのをやめる
           </button>
         )}
+      </div>
+
+      {/* 拡大・縮小（右下） */}
+      <div className="absolute bottom-4 right-3 z-[6000] flex items-center gap-1 rounded-xl bg-slate-950/85 p-1 shadow-lg sm:right-5">
+        <button
+          type="button"
+          onClick={() => changeZoom(-1)}
+          disabled={zoomIndex === 0}
+          aria-label="縮小する"
+          className="grid h-8 w-8 place-items-center rounded-lg text-lg font-bold text-white transition hover:bg-white/10 disabled:text-slate-600 disabled:hover:bg-transparent"
+        >
+          －
+        </button>
+        <button
+          type="button"
+          onClick={() => changeZoom(DEFAULT_ZOOM_INDEX - zoomIndex)}
+          aria-label="元の大きさに戻す"
+          className="min-w-12 rounded-lg px-1 text-xs font-semibold text-slate-200 transition hover:bg-white/10"
+        >
+          {Math.round(zoom * 100)}%
+        </button>
+        <button
+          type="button"
+          onClick={() => changeZoom(1)}
+          disabled={zoomIndex === ZOOM_LEVELS.length - 1}
+          aria-label="拡大する"
+          className="grid h-8 w-8 place-items-center rounded-lg text-lg font-bold text-white transition hover:bg-white/10 disabled:text-slate-600 disabled:hover:bg-transparent"
+        >
+          ＋
+        </button>
       </div>
 
       {/* 建てた・移した・取り壊した時のお知らせ */}
@@ -1103,10 +1237,19 @@ export function RepositoryWorld({
          * スクロールできなくなるので，地図の側の m-auto で寄せる．
          */}
         <div className="flex min-h-full min-w-full">
+          {/* 拡大・縮小した大きさの枠．スクロールできる範囲を，見た目の大きさに合わせる */}
+          <div
+            className="relative m-auto shrink-0"
+            style={{ width: map.width * zoom, height: map.height * zoom }}
+          >
           <div
             ref={groundRef}
-            className="world-ground relative m-auto shrink-0"
-            style={{ width: map.width, height: map.height }}
+            className="world-ground absolute left-0 top-0 origin-top-left"
+            style={{
+              width: map.width,
+              height: map.height,
+              transform: `scale(${zoom})`,
+            }}
           >
             {/* 道（2本の道と，そのあいだのつなぎの道） */}
             {map.roadYs.map((y) => (
@@ -1206,7 +1349,8 @@ export function RepositoryWorld({
               }
 
               const walker =
-                walkers[character.id] ?? getInitialWalker(door);
+                walkers[character.id] ??
+                getInitialWalker(startPositions.get(character.id) ?? door);
 
               const evolution = getCharacterEvolution(
                 character.characterType,
@@ -1326,6 +1470,7 @@ export function RepositoryWorld({
                 </Link>
               );
             })}
+          </div>
           </div>
         </div>
       </div>
