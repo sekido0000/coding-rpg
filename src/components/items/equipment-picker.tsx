@@ -20,7 +20,7 @@ type EquipmentPickerProps = {
   inventory: Inventory;
 };
 
-// 装備の小さな見本
+// 装飾の小さな見本
 export function ItemPreview({ itemId }: { itemId: ItemId }) {
   return ITEM_CATALOG[itemId].slot === "companion" ? (
     <CompanionSprite itemId={itemId} className="h-8 w-8" />
@@ -57,7 +57,7 @@ function ChoiceButton({
 }
 
 /*
- * 装備を付け替えるフォーム．
+ * 装飾を付け替えるフォーム．
  * 押した瞬間に表示を切り替え（楽観的更新），保存は裏で行う．
  * 保存に失敗した時は，処理が終わると自動で元の表示に戻る．
  */
@@ -100,8 +100,8 @@ function EquipForm({
 }
 
 /*
- * キャラクターの詳細ページで，装備を付け替える．
- * 持っている装備だけを並べる．持っている個数だけ，
+ * キャラクターの詳細ページで，装飾（おとも・足元）を付け替える．
+ * 持っている装飾だけを並べる．持っている個数だけ，
  * ほかのキャラクターが付けている時は選べない．
  */
 export function EquipmentPicker({
@@ -121,12 +121,12 @@ export function EquipmentPicker({
     >
       <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
         <div>
-          <p className="repo-kicker">Equipment</p>
+          <p className="repo-kicker">Decoration</p>
           <h2
             id="equipment-heading"
             className="mt-1 text-lg font-bold text-white"
           >
-            装備
+            装飾
           </h2>
         </div>
 
@@ -140,7 +140,7 @@ export function EquipmentPicker({
 
       {!hasItems ? (
         <p className="text-sm text-slate-400">
-          クエストでゴールドを集めて，雑貨店で装備を買うと，ここで付けられます．
+          クエストでゴールドを集めて，雑貨店で装飾を買うと，ここで付けられます．
         </p>
       ) : (
         <div className="space-y-5">

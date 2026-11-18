@@ -9,7 +9,7 @@ import {
 
 export type InventoryItem = {
   quantity: number;
-  // この装備を付けているキャラクター
+  // この装飾を付けているキャラクター
   equippedCharacterIds: string[];
 };
 
@@ -19,7 +19,7 @@ export type Inventory = {
 };
 
 /*
- * 持っているゴールドと装備，それぞれの装備を付けているキャラクター．
+ * 持っているゴールドと装飾，それぞれの装飾を付けているキャラクター．
  * RLSで本人の行だけが返るので，ユーザーを指定せずに取る．
  */
 export async function getInventory(): Promise<Inventory> {

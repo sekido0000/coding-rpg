@@ -7,8 +7,8 @@ import {
   toItemId,
 } from "@/lib/items/catalog";
 
-describe("装備の一覧", () => {
-  it("どの装備にも正しい値段と場所がある", () => {
+describe("装飾の一覧", () => {
+  it("どの装飾にも正しい値段と場所がある", () => {
     for (const id of ITEM_IDS) {
       const item = ITEM_CATALOG[id];
 
@@ -41,7 +41,7 @@ describe("装備の一覧", () => {
     }
   });
 
-  it("DB の値は，場所が合っている装備だけを付けている扱いにする", () => {
+  it("DB の値は，場所が合っている装飾だけを付けている扱いにする", () => {
     expect(toItemId("chick", "companion")).toBe("chick");
     expect(toItemId("chick", "aura")).toBeNull();
     expect(toItemId("deleted_item", "companion")).toBeNull();

@@ -34,7 +34,7 @@ async function getUserId() {
 }
 
 /*
- * 装備を1個買う．
+ * 装飾を1個買う．
  * 値段はブラウザから受け取らず，サーバーの一覧（catalog.ts）から決める．
  */
 export async function purchaseItemAction(
@@ -44,7 +44,7 @@ export async function purchaseItemAction(
   const itemId = formData.get("itemId");
 
   if (!isItemId(itemId)) {
-    return { status: "error", message: "装備が見つかりません" };
+    return { status: "error", message: "装飾が見つかりません" };
   }
 
   const item = ITEM_CATALOG[itemId];
@@ -71,7 +71,7 @@ export async function purchaseItemAction(
     return { status: "error", message: "ゴールドが足りません" };
   }
 
-  // 雑貨店の称号を渡す．失敗しても，買った装備はそのまま
+  // 雑貨店の称号を渡す．失敗しても，買った装飾はそのまま
   try {
     await grantTitles(createAdminClient(), userId);
   } catch (titleError) {
@@ -90,7 +90,7 @@ export async function purchaseItemAction(
 }
 
 /*
- * キャラクターに装備を付ける．itemId が空の時は外す．
+ * キャラクターに装飾を付ける．itemId が空の時は外す．
  * 持っている個数を超えて付けられないかなどは，DB の関数（equip_item）で確かめる．
  */
 export async function equipItemAction(
@@ -108,7 +108,7 @@ export async function equipItemAction(
     !UUID_PATTERN.test(repositoryId) ||
     !isItemSlot(slot)
   ) {
-    throw new Error("装備の指定が不正です");
+    throw new Error("装飾の指定が不正です");
   }
 
   const itemId = itemIdValue === "" ? null : itemIdValue;
@@ -117,7 +117,7 @@ export async function equipItemAction(
     itemId !== null &&
     (!isItemId(itemId) || ITEM_CATALOG[itemId].slot !== slot)
   ) {
-    throw new Error("装備の指定が不正です");
+    throw new Error("装飾の指定が不正です");
   }
 
   const userId = await getUserId();
@@ -130,7 +130,7 @@ export async function equipItemAction(
   });
 
   if (error) {
-    throw new Error(`装備を付けられませんでした: ${error.message}`);
+    throw new Error(`装飾を付けられませんでした: ${error.message}`);
   }
 
   revalidatePath(`/repositories/${repositoryId}`);

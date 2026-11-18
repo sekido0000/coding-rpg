@@ -1,7 +1,7 @@
 import type { ItemId } from "@/lib/items/catalog";
 
 /*
- * 足元の装備の見た目．
+ * 足元の装飾の見た目．
  * キャラクターの絵を包む要素（position: relative）の中に置き，
  * 絵より後ろ（z-0）に表示する．大きさは絵の幅に合わせて伸び縮みする．
  */
@@ -9,7 +9,7 @@ type AuraEffectProps = {
   itemId: ItemId;
 };
 
-// 足元の楕円（すべての足元の装備で使う土台）
+// 足元の楕円（すべての足元の装飾で使う土台）
 function GroundRing({ className }: { className: string }) {
   return (
     <span
