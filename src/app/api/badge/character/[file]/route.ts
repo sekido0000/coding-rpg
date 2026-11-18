@@ -8,7 +8,7 @@ import { missingBadgeResponse, svgResponse } from "@/lib/badges/response";
  * 本人が有効にした時だけ，誰でも見られる．名前やリポジトリ名は出さない．
  */
 export async function GET(
-  request: Request,
+  _request: Request,
   { params }: { params: Promise<{ file: string }> },
 ) {
   const token = parseBadgeFile((await params).file);
@@ -17,7 +17,7 @@ export async function GET(
     return missingBadgeResponse();
   }
 
-  const member = await getCharacterBadgeMember(new URL(request.url).origin, token);
+  const member = await getCharacterBadgeMember(token);
 
   return member
     ? svgResponse(renderCharacterBadge(member))
